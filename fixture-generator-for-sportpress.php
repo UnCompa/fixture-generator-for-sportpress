@@ -185,12 +185,33 @@ class FGSP_Plugin
 
     public function render_tournament_groups_meta_box($post)
     {
-        $teams = get_posts(array(
+        // Get tournament leagues
+        $leagues = get_the_terms($post->ID, 'sp_league');
+        $league_ids = array();
+
+        if ($leagues && !is_wp_error($leagues)) {
+            $league_ids = wp_list_pluck($leagues, 'term_id');
+        }
+
+        $args = array(
             'post_type' => 'sp_team',
             'posts_per_page' => -1,
             'orderby' => 'title',
             'order' => 'ASC'
-        ));
+        );
+
+        // Filter by league if set
+        if (!empty($league_ids)) {
+            $args['tax_query'] = array(
+                array(
+                    'taxonomy' => 'sp_league',
+                    'field' => 'term_id',
+                    'terms' => $league_ids,
+                ),
+            );
+        }
+
+        $teams = get_posts($args);
 
         // Get currently associated groups (sp_table posts)
         $tables = get_posts(array(
