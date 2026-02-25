@@ -236,10 +236,12 @@ class FGSP_Plugin
 
             <div id="fgsp-existing-groups">
                 <h4 style="border-bottom:1px solid #eee; padding-bottom:5px;">
-                    <?php _e('Associated Groups', 'fixture-generator-for-sportpress'); ?></h4>
+                    <?php _e('Associated Groups', 'fixture-generator-for-sportpress'); ?>
+                </h4>
                 <?php if (empty($tables)): ?>
                     <p id="fgsp-no-groups-msg" style="font-style:italic; color:#777;">
-                        <?php _e('No groups created for this tournament yet.', 'fixture-generator-for-sportpress'); ?></p>
+                        <?php _e('No groups created for this tournament yet.', 'fixture-generator-for-sportpress'); ?>
+                    </p>
                 <?php endif; ?>
                 <div class="fgsp-groups-list">
                     <?php foreach ($tables as $table):
@@ -582,13 +584,38 @@ class FGSP_Plugin
             wp_send_json_error('Failed to create group.');
         }
 
+        // Standard SportsPress setup for tables (Matching ID 443)
+        update_post_meta($table_id, 'sp_mode', 'team');
+        update_post_meta($table_id, 'sp_format', 'standings');
+        update_post_meta($table_id, 'sp_select', 'manual');
+        update_post_meta($table_id, 'sp_orderby', 'default');
+        update_post_meta($table_id, 'sp_order', 'ASC');
+
+        // Default columns mapping
+        $columns = array('p', 'w', 'd', 'l', 'f', 'a', 'gd', 'pts');
+        update_post_meta($table_id, 'sp_columns', $columns);
+
         // Link to tournament
         update_post_meta($table_id, 'sp_tournament', $tournament_id);
 
-        // Assign teams
+        // Assign teams with full stats structure
         $teams_meta = array();
+        delete_post_meta($table_id, 'sp_team'); // Clear defaults if any
+        add_post_meta($table_id, 'sp_team', '0'); // SportsPress padding/offset
+
         foreach ($team_ids as $tid) {
-            $teams_meta[$tid] = array('notes' => '');
+            $teams_meta[$tid] = array(
+                'name' => '',
+                'p' => '',
+                'w' => '',
+                'd' => '',
+                'l' => '',
+                'f' => '',
+                'a' => '',
+                'gd' => '',
+                'pts' => ''
+            );
+            add_post_meta($table_id, 'sp_team', $tid);
         }
         update_post_meta($table_id, 'sp_teams', $teams_meta);
 
