@@ -168,11 +168,61 @@ class FGSP_Plugin
                                 <label><?php _e('Interval (Days)', 'fixture-generator-for-sportpress'); ?></label>
                                 <input type="number" id="fgsp-modal-interval" value="7" min="1" style="width: 100%;">
                             </div>
-                            <div class="fgsp-field" style="flex:1; padding-top:20px;">
-                                <label style="cursor:pointer;">
-                                    <input type="checkbox" id="fgsp-modal-balance" checked>
-                                    <?php _e('Balance Home/Away', 'fixture-generator-for-sportpress'); ?>
+                            <div class="fgsp-field" style="margin-top: 15px;">
+                                <label style="font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                                    <input type="checkbox" id="fgsp-modal-balance-home" checked>
+                                    <?php _e('Balance Localía', 'fixture-generator-for-sportpress'); ?>
                                 </label>
+                            </div>
+
+                            <!-- Advanced Settings Toggle -->
+                            <div class="fgsp-modal-advanced-toggle"
+                                style="margin-top:15px; border-top: 1px solid #eee; padding-top: 10px;">
+                                <button type="button" class="button-link fgsp-modal-toggle-adv"
+                                    style="padding:0; font-size:11px; text-decoration:none;">
+                                    <span class="dashicons dashicons-arrow-down-alt2"></span>
+                                    <?php _e('Advanced Settings (Calendar / Venue)', 'fixture-generator-for-sportpress'); ?>
+                                </button>
+                            </div>
+
+                            <div id="fgsp-modal-advanced-fields"
+                                style="display:none; margin-top:10px; border-top:1px dashed #eee; padding-top:10px;">
+                                <label
+                                    style="font-weight:600; display:block; margin-bottom:5px; font-size:12px;"><?php _e('Allowed Days', 'fixture-generator-for-sportpress'); ?></label>
+                                <div
+                                    style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; background:#f9f9f9; padding:8px; border-radius:4px;">
+                                    <label style="font-size:11px;"><input type="checkbox" class="fgsp-modal-day" value="1">
+                                        <span>M</span></label>
+                                    <label style="font-size:11px;"><input type="checkbox" class="fgsp-modal-day" value="2">
+                                        <span>T</span></label>
+                                    <label style="font-size:11px;"><input type="checkbox" class="fgsp-modal-day" value="3">
+                                        <span>W</span></label>
+                                    <label style="font-size:11px;"><input type="checkbox" class="fgsp-modal-day" value="4">
+                                        <span>T</span></label>
+                                    <label style="font-size:11px;"><input type="checkbox" class="fgsp-modal-day" value="5">
+                                        <span>F</span></label>
+                                    <label style="font-size:11px;"><input type="checkbox" class="fgsp-modal-day" value="6"
+                                            checked> <span>S</span></label>
+                                    <label style="font-size:11px;"><input type="checkbox" class="fgsp-modal-day" value="0"
+                                            checked> S</label>
+                                </div>
+
+                                <div class="fgsp-field">
+                                    <label
+                                        style="font-weight:600; display:block; margin-bottom:5px; font-size:12px;"><?php _e('Rotate Times (comma separated)', 'fixture-generator-for-sportpress'); ?></label>
+                                    <input type="text" id="fgsp-modal-rotate-times" value="18:00"
+                                        style="width:100%; font-size:12px;" placeholder="18:00, 20:00">
+                                </div>
+
+                                <div class="fgsp-field" style="margin-top:10px;">
+                                    <label
+                                        style="font-size: 13px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                                        <input type="checkbox" id="fgsp-modal-assign-venue" checked>
+                                        <?php _e('Auto-assign Venue', 'fixture-generator-for-sportpress'); ?>
+                                    </label>
+                                    <span
+                                        style="font-size: 10px; color: #777; display: block; margin-left: 20px;"><?php _e("Uses Home Team's primary venue.", 'fixture-generator-for-sportpress'); ?></span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -636,19 +686,45 @@ class FGSP_Plugin
             $rounds[] = $matches;
         }
 
+        $allowed_days = isset($_POST['allowed_days']) ? (array) $_POST['allowed_days'] : array();
+        $rotate_times = isset($_POST['rotate_times']) ? sanitize_text_field($_POST['rotate_times']) : $start_time;
+        $assign_venue_enabled = isset($_POST['assign_venue']) ? (bool) $_POST['assign_venue'] : false;
+
+        $times_list = array_map('trim', explode(',', $rotate_times));
+        if (empty($times_list)) {
+            $times_list = array($start_time);
+        }
+
         error_log("FGSP: Generated " . count($rounds) . " rounds");
 
         $created_count = 0;
         $created_event_ids = array();
-        $current_timestamp = strtotime($dt_string);
+        $current_timestamp = strtotime($start_date . ' ' . $times_list[0]);
 
         foreach ($rounds as $r_idx => $matches) {
             $round_num = $r_idx + 1;
-            $event_date = date('Y-m-d H:i:s', $current_timestamp);
 
-            foreach ($matches as $match) {
+            // If not first round, advance date
+            if ($r_idx > 0) {
+                $current_timestamp = strtotime(date('Y-m-d H:i:s', $current_timestamp) . " + $interval days");
+
+                // If allowed days specified, find next valid day
+                if (!empty($allowed_days)) {
+                    while (!in_array(date('w', $current_timestamp), $allowed_days)) {
+                        $current_timestamp = strtotime(date('Y-m-d H:i:s', $current_timestamp) . " + 1 day");
+                    }
+                }
+            }
+
+            $current_date_base = date('Y-m-d', $current_timestamp);
+
+            foreach ($matches as $m_idx => $match) {
                 $home_id = $match[0];
                 $away_id = $match[1];
+
+                // Rotation of times
+                $this_match_time = $times_list[$m_idx % count($times_list)];
+                $this_event_date = $current_date_base . ' ' . $this_match_time;
 
                 $event_title = get_the_title($home_id) . ' vs ' . get_the_title($away_id);
 
@@ -656,17 +732,27 @@ class FGSP_Plugin
                     'post_title' => $event_title,
                     'post_type' => 'sp_event',
                     'post_status' => 'publish',
-                    'post_date' => $event_date,
+                    'post_date' => $this_event_date,
                 ));
 
                 if ($event_id) {
-                    error_log("FGSP: Created Event $event_id: $event_title (Round $round_num, Date: $event_date)");
+                    error_log("FGSP: Created Event $event_id: $event_title (Round $round_num, Date: $this_event_date)");
                     update_post_meta($event_id, 'sp_team', $home_id);
                     add_post_meta($event_id, 'sp_team', $away_id);
                     update_post_meta($event_id, 'sp_tournament', $tournament_id);
                     update_post_meta($event_id, 'sp_table', $table_id);
                     update_post_meta($event_id, 'sp_day', $round_num);
                     update_post_meta($event_id, 'sp_format', 'league');
+
+                    // Assign Venue (Cancha)
+                    if ($assign_venue_enabled) {
+                        $venue_ids = get_the_terms($home_id, 'sp_venue');
+                        if ($venue_ids && !is_wp_error($venue_ids)) {
+                            $venue_id = $venue_ids[0]->term_id;
+                            wp_set_object_terms($event_id, intval($venue_id), 'sp_venue');
+                            update_post_meta($event_id, 'sp_venue', $venue_id);
+                        }
+                    }
 
                     if ($league_id)
                         wp_set_object_terms($event_id, intval($league_id), 'sp_league');
@@ -677,7 +763,6 @@ class FGSP_Plugin
                     $created_event_ids[] = $event_id;
                 }
             }
-            $current_timestamp += ($interval * DAY_IN_SECONDS);
         }
 
         // Log to database

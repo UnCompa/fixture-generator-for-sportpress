@@ -404,3 +404,42 @@ select:focus {
   height: 10px;
   border-radius: 5px;
 }
+
+/* Advanced Settings Styles */
+.fgsp-advanced-toggle-wrapper {
+  margin-top: 15px;
+}
+
+.fgsp-toggle-advanced,
+.fgsp-modal-toggle-adv {
+  color: #7f8c8d !important;
+  font-weight: 600 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  transition: color 0.2s ease !important;
+}
+
+.fgsp-toggle-advanced:hover,
+.fgsp-modal-toggle-adv:hover {
+  color: var(--fgsp-secondary) !important;
+}
+
+.fgsp-advanced-settings {
+  background: #fcfcfc;
+  padding: 15px;
+  border-radius: 8px;
+  border: 1px dashed #ddd;
+  margin-top: 10px;
+}
+
+.fgsp-days-selector label,
+.fgsp-modal-body label {
+  cursor: pointer;
+}
+
+.fgsp-day:checked + span,
+.fgsp-modal-day:checked + span {
+  color: var(--fgsp-primary);
+  font-weight: bold;
+}

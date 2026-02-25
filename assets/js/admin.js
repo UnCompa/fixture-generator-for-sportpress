@@ -122,6 +122,38 @@ jQuery(document).ready(function($) {
                                 </label>
                             </div>
                         </div>
+
+                        <!-- Advanced Settings -->
+                        <div class="fgsp-advanced-toggle-wrapper" style="margin-top: 15px; border-top: 1px solid #eee; padding-top: 10px;">
+                            <button type="button" class="button-link fgsp-toggle-advanced" style="text-decoration: none; font-size: 11px; padding: 0;">
+                                <span class="dashicons dashicons-arrow-down-alt2"></span> Advanced Settings (Calendar / Venue)
+                            </button>
+                        </div>
+                        <div class="fgsp-advanced-settings" style="display: none; padding-top: 10px; border-top: 1px dashed #eee; margin-top: 5px;">
+                            <div class="fgsp-config-title">Allowed Days</div>
+                            <div class="fgsp-days-selector" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; background: #f9f9f9; padding: 8px; border-radius: 4px;">
+                                <label style="font-size:11px;"><input type="checkbox" class="fgsp-day" value="1"> <span>M</span></label>
+                                <label style="font-size:11px;"><input type="checkbox" class="fgsp-day" value="2"> <span>T</span></label>
+                                <label style="font-size:11px;"><input type="checkbox" class="fgsp-day" value="3"> <span>W</span></label>
+                                <label style="font-size:11px;"><input type="checkbox" class="fgsp-day" value="4"> <span>T</span></label>
+                                <label style="font-size:11px;"><input type="checkbox" class="fgsp-day" value="5"> <span>F</span></label>
+                                <label style="font-size:11px;"><input type="checkbox" class="fgsp-day" value="6" checked> <span>S</span></label>
+                                <label style="font-size:11px;"><input type="checkbox" class="fgsp-day" value="0" checked> <span>S</span></label>
+                            </div>
+                            
+                            <div class="fgsp-field">
+                                <div class="fgsp-config-title">Rotate Times (comma separated)</div>
+                                <input type="text" class="fgsp-rotate-times" placeholder="18:00, 20:00" style="width: 100%; font-size: 12px;" value="18:00">
+                                <span style="font-size: 10px; color: #777;">Matches will rotate between these times.</span>
+                            </div>
+
+                            <div class="fgsp-field" style="margin-top: 10px;">
+                                <label style="font-size: 0.8rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                                    <input type="checkbox" class="fgsp-assign-venue" checked> Auto-assign Venue
+                                </label>
+                                <span style="font-size: 10px; color: #777; display: block; margin-left: 20px;">Uses Home Team's venue.</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             `;
@@ -130,6 +162,20 @@ jQuery(document).ready(function($) {
         $groupsContainer.html(html).show();
         $actions.fadeIn(400);
     }
+
+    $(document).on('click', '.fgsp-toggle-advanced', function() {
+        const $btn = $(this);
+        const $target = $btn.closest('.fgsp-group-card').find('.fgsp-advanced-settings');
+        const $icon = $btn.find('.dashicons');
+
+        if ($target.is(':visible')) {
+            $target.slideUp(200);
+            $icon.removeClass('dashicons-arrow-up-alt2').addClass('dashicons-arrow-down-alt2');
+        } else {
+            $target.slideDown(200);
+            $icon.removeClass('dashicons-arrow-down-alt2').addClass('dashicons-arrow-up-alt2');
+        }
+    });
 
     $(document).on('click', '#fgsp-generate-all', async function() {
         const $btn = $(this);
@@ -178,6 +224,9 @@ jQuery(document).ready(function($) {
                         start_time: startTime,
                         interval: interval,
                         balance_home: balanceHome,
+                        allowed_days: $card.find('.fgsp-day:checked').map(function() { return $(this).val(); }).get(),
+                        rotate_times: $card.find('.fgsp-rotate-times').val(),
+                        assign_venue: $card.find('.fgsp-assign-venue').is(':checked') ? 1 : 0,
                         nonce: fgspData.nonce
                     }
                 });
@@ -223,6 +272,18 @@ jQuery(document).ready(function($) {
             }
         });
 
+        $(document).on('click', '.fgsp-modal-toggle-adv', function() {
+            const $btn = $(this);
+            const $target = $('#fgsp-modal-advanced-fields');
+            const $icon = $btn.find('.dashicons');
+            $target.slideToggle(200);
+            if ($icon.hasClass('dashicons-arrow-down-alt2')) {
+                $icon.removeClass('dashicons-arrow-down-alt2').addClass('dashicons-arrow-up-alt2');
+            } else {
+                $icon.removeClass('dashicons-arrow-up-alt2').addClass('dashicons-arrow-down-alt2');
+            }
+        });
+
         $modalSubmit.on('click', async function() {
             const tournamentId = $('#fgsp-modal-tournament-id').val();
             const tableId = $('#fgsp-modal-table-id').val();
@@ -252,7 +313,10 @@ jQuery(document).ready(function($) {
                         start_date: startDate,
                         start_time: startTime,
                         interval: interval,
-                        balance_home: balanceHome,
+                        balance_home: $('#fgsp-modal-balance-home').is(':checked') ? 1 : 0,
+                        allowed_days: $('.fgsp-modal-day:checked').map(function() { return $(this).val(); }).get(),
+                        rotate_times: $('#fgsp-modal-rotate-times').val(),
+                        assign_venue: $('#fgsp-modal-assign-venue').is(':checked') ? 1 : 0,
                         nonce: fgspData.nonce
                     }
                 });
