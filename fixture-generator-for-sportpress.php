@@ -90,10 +90,10 @@ class FGSP_Plugin
         );
 
         add_meta_box(
-            'fgsp-tournament-events',
-            __('Tournament Events', 'fixture-generator-for-sportpress'),
-            array($this, 'render_tournament_events_meta_box'),
-            'sp_tournament',
+            'fgsp-associated-events',
+            __('Associated Events', 'fixture-generator-for-sportpress'),
+            array($this, 'render_associated_events_meta_box'),
+            array('sp_tournament', 'sp_table'),
             'normal',
             'default'
         );
@@ -163,66 +163,66 @@ class FGSP_Plugin
                             </div>
                         </div>
 
-                        <div style="display:flex; gap:10px; margin-top:15px; align-items:center;">
+                        <div style="display:flex; gap:10px; margin-top:15px;">
                             <div class="fgsp-field" style="flex:1;">
                                 <label><?php _e('Interval (Days)', 'fixture-generator-for-sportpress'); ?></label>
                                 <input type="number" id="fgsp-modal-interval" value="7" min="1" style="width: 100%;">
                             </div>
-                            <div class="fgsp-field" style="margin-top: 15px;">
+                            <div class="fgsp-field" style="flex:1; padding-top:20px;">
                                 <label style="font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 5px;">
                                     <input type="checkbox" id="fgsp-modal-balance-home" checked>
                                     <?php _e('Balance Localía', 'fixture-generator-for-sportpress'); ?>
                                 </label>
                             </div>
+                        </div>
 
-                            <!-- Advanced Settings Toggle -->
-                            <div class="fgsp-modal-advanced-toggle"
-                                style="margin-top:15px; border-top: 1px solid #eee; padding-top: 10px;">
-                                <button type="button" class="button-link fgsp-modal-toggle-adv"
-                                    style="padding:0; font-size:11px; text-decoration:none;">
-                                    <span class="dashicons dashicons-arrow-down-alt2"></span>
-                                    <?php _e('Advanced Settings (Calendar / Venue)', 'fixture-generator-for-sportpress'); ?>
-                                </button>
+                        <!-- Advanced Settings Toggle -->
+                        <div class="fgsp-modal-advanced-toggle"
+                            style="margin-top:15px; border-top: 1px solid #eee; padding-top: 10px;">
+                            <button type="button" class="button-link fgsp-modal-toggle-adv"
+                                style="padding:0; font-size:11px; text-decoration:none;">
+                                <span class="dashicons dashicons-arrow-down-alt2"></span>
+                                <?php _e('Advanced Settings (Calendar / Venue)', 'fixture-generator-for-sportpress'); ?>
+                            </button>
+                        </div>
+
+                        <div id="fgsp-modal-advanced-fields"
+                            style="display:none; margin-top:10px; border-top:1px dashed #eee; padding-top:10px;">
+                            <label
+                                style="font-weight:600; display:block; margin-bottom:5px; font-size:12px;"><?php _e('Allowed Days', 'fixture-generator-for-sportpress'); ?></label>
+                            <div
+                                style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; background:#f9f9f9; padding:8px; border-radius:4px;">
+                                <label style="font-size:11px;"><input type="checkbox" class="fgsp-modal-day" value="1">
+                                    <span>M</span></label>
+                                <label style="font-size:11px;"><input type="checkbox" class="fgsp-modal-day" value="2">
+                                    <span>T</span></label>
+                                <label style="font-size:11px;"><input type="checkbox" class="fgsp-modal-day" value="3">
+                                    <span>W</span></label>
+                                <label style="font-size:11px;"><input type="checkbox" class="fgsp-modal-day" value="4">
+                                    <span>T</span></label>
+                                <label style="font-size:11px;"><input type="checkbox" class="fgsp-modal-day" value="5">
+                                    <span>F</span></label>
+                                <label style="font-size:11px;"><input type="checkbox" class="fgsp-modal-day" value="6" checked>
+                                    <span>S</span></label>
+                                <label style="font-size:11px;"><input type="checkbox" class="fgsp-modal-day" value="0" checked>
+                                    <span>S</span></label>
                             </div>
 
-                            <div id="fgsp-modal-advanced-fields"
-                                style="display:none; margin-top:10px; border-top:1px dashed #eee; padding-top:10px;">
+                            <div class="fgsp-field">
                                 <label
-                                    style="font-weight:600; display:block; margin-bottom:5px; font-size:12px;"><?php _e('Allowed Days', 'fixture-generator-for-sportpress'); ?></label>
-                                <div
-                                    style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; background:#f9f9f9; padding:8px; border-radius:4px;">
-                                    <label style="font-size:11px;"><input type="checkbox" class="fgsp-modal-day" value="1">
-                                        <span>M</span></label>
-                                    <label style="font-size:11px;"><input type="checkbox" class="fgsp-modal-day" value="2">
-                                        <span>T</span></label>
-                                    <label style="font-size:11px;"><input type="checkbox" class="fgsp-modal-day" value="3">
-                                        <span>W</span></label>
-                                    <label style="font-size:11px;"><input type="checkbox" class="fgsp-modal-day" value="4">
-                                        <span>T</span></label>
-                                    <label style="font-size:11px;"><input type="checkbox" class="fgsp-modal-day" value="5">
-                                        <span>F</span></label>
-                                    <label style="font-size:11px;"><input type="checkbox" class="fgsp-modal-day" value="6"
-                                            checked> <span>S</span></label>
-                                    <label style="font-size:11px;"><input type="checkbox" class="fgsp-modal-day" value="0"
-                                            checked> S</label>
-                                </div>
+                                    style="font-weight:600; display:block; margin-bottom:5px; font-size:12px;"><?php _e('Rotate Times (comma separated)', 'fixture-generator-for-sportpress'); ?></label>
+                                <input type="text" id="fgsp-modal-rotate-times" value="18:00"
+                                    style="width:100%; font-size:12px;" placeholder="18:00, 20:00">
+                            </div>
 
-                                <div class="fgsp-field">
-                                    <label
-                                        style="font-weight:600; display:block; margin-bottom:5px; font-size:12px;"><?php _e('Rotate Times (comma separated)', 'fixture-generator-for-sportpress'); ?></label>
-                                    <input type="text" id="fgsp-modal-rotate-times" value="18:00"
-                                        style="width:100%; font-size:12px;" placeholder="18:00, 20:00">
-                                </div>
-
-                                <div class="fgsp-field" style="margin-top:10px;">
-                                    <label
-                                        style="font-size: 13px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 5px;">
-                                        <input type="checkbox" id="fgsp-modal-assign-venue" checked>
-                                        <?php _e('Auto-assign Venue', 'fixture-generator-for-sportpress'); ?>
-                                    </label>
-                                    <span
-                                        style="font-size: 10px; color: #777; display: block; margin-left: 20px;"><?php _e("Uses Home Team's primary venue.", 'fixture-generator-for-sportpress'); ?></span>
-                                </div>
+                            <div class="fgsp-field" style="margin-top:10px;">
+                                <label
+                                    style="font-size: 13px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                                    <input type="checkbox" id="fgsp-modal-assign-venue" checked>
+                                    <?php _e('Auto-assign Venue', 'fixture-generator-for-sportpress'); ?>
+                                </label>
+                                <span
+                                    style="font-size: 10px; color: #777; display: block; margin-left: 20px;"><?php _e("Uses Home Team's primary venue.", 'fixture-generator-for-sportpress'); ?></span>
                             </div>
                         </div>
                     </div>
@@ -237,6 +237,8 @@ class FGSP_Plugin
                 <div class="fgsp-modal-footer">
                     <button type="button" id="fgsp-modal-cancel"
                         class="button"><?php _e('Cancel', 'fixture-generator-for-sportpress'); ?></button>
+                    <button type="button" id="fgsp-modal-submit"
+                        class="button button-primary"><?php _e('Generate Now', 'fixture-generator-for-sportpress'); ?></button>
                 </div>
             </div>
         </div>
@@ -343,14 +345,16 @@ class FGSP_Plugin
         <?php
     }
 
-    public function render_tournament_events_meta_box($post)
+    public function render_associated_events_meta_box($post)
     {
+        $meta_key = ($post->post_type === 'sp_table') ? 'sp_table' : 'sp_tournament';
+
         $events = get_posts(array(
             'post_type' => 'sp_event',
             'posts_per_page' => -1,
             'meta_query' => array(
                 array(
-                    'key' => 'sp_tournament',
+                    'key' => $meta_key,
                     'value' => $post->ID
                 )
             ),
@@ -359,7 +363,7 @@ class FGSP_Plugin
         ));
 
         if (empty($events)) {
-            echo '<p>' . __('No events found for this tournament.', 'fixture-generator-for-sportpress') . '</p>';
+            echo '<p>' . __('No events found.', 'fixture-generator-for-sportpress') . '</p>';
             return;
         }
 
