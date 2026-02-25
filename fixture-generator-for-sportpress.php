@@ -148,6 +148,9 @@ class FGSP_Plugin
                                 </option>
                                 <option value="random"><?php _e('Random Matchmaking', 'fixture-generator-for-sportpress'); ?>
                                 </option>
+                                <option value="playoffs-single">
+                                            <?php _e('Playoffs - Single Elimination (Top 4/8)', 'fixture-generator-for-sportpress'); ?>
+                                </option>
                             </select>
                         </div>
 
@@ -723,8 +726,37 @@ class FGSP_Plugin
                     $rounds = array_merge($rounds, $second_half);
                 }
             }
-        } elseif ($algorithm === 'knockout') {
-            $rounds = $this->generate_knockout_schedule($team_ids);
+        } elseif ($algorithm === 'knockout' || $algorithm === 'playoffs-single') {
+            if ($algorithm === 'playoffs-single') {
+                // Try to sort teams by points from the table metadata
+                uasort($team_ids_meta, function ($a, $b) {
+                    $pts_a = isset($a['pts']) ? intval($a['pts']) : 0;
+                    $pts_b = isset($b['pts']) ? intval($b['pts']) : 0;
+                    if ($pts_a == $pts_b) {
+                        $gd_a = isset($a['gd']) ? intval($a['gd']) : 0;
+                        $gd_b = isset($b['gd']) ? intval($b['gd']) : 0;
+                        return $gd_b - $gd_a;
+                    }
+                    return $pts_b - $pts_a;
+                });
+                $sorted_team_ids = array_keys($team_ids_meta);
+
+                // Limit to power of 2 (4, 8, 16...)
+                $count = count($sorted_team_ids);
+                if ($count >= 16)
+                    $limit = 16;
+                elseif ($count >= 8)
+                    $limit = 8;
+                elseif ($count >= 4)
+                    $limit = 4;
+                else
+                    $limit = 2;
+
+                $team_ids = array_slice($sorted_team_ids, 0, $limit);
+                $rounds = $this->generate_playoff_schedule($team_ids);
+            } else {
+                $rounds = $this->generate_knockout_schedule($team_ids);
+            }
         } else {
             // Random
             shuffle($team_ids);
@@ -964,16 +996,37 @@ class FGSP_Plugin
         return $rounds;
     }
 
+    private function generate_playoff_schedule($teams)
+    {
+        $n = count($teams);
+        $rounds = array();
+
+        // Round 1 (Seed pairings: 1 vs N, 2 vs N-1, etc.)
+        $r1_matches = array();
+        for ($i = 0; $i < $n / 2; $i++) {
+            $r1_matches[] = array($teams[$i], $teams[$n - 1 - $i]);
+        }
+        $rounds[] = $r1_matches;
+
+        // Note: For playoffs, generating Round 2 and beyond is complex because 
+        // teams aren't known yet. We'll generate placeholders or just the first round.
+        // For now, let's just generate the first round of the playoffs (Quarterfinals/Semifinals).
+        return $rounds;
+    }
+
     private function generate_knockout_schedule($teams)
     {
+        if (count($teams) % 2 != 0) {
+            $teams[] = null; // bye
+        }
         shuffle($teams);
         $matches = array();
         for ($i = 0; $i < count($teams); $i += 2) {
-            if (isset($teams[$i + 1])) {
+            if ($teams[$i] !== null && $teams[$i + 1] !== null) {
                 $matches[] = array($teams[$i], $teams[$i + 1]);
             }
         }
-        return array($matches); // Simple single round for knockout for now
+        return array($matches);
     }
 }
 

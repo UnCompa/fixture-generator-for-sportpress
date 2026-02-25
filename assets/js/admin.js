@@ -98,6 +98,7 @@ jQuery(document).ready(function($) {
                                     <option value="reverse-round-robin">Round Robin (Vuelta e Ida)</option>
                                     <option value="random">Emparejamiento Aleatorio</option>
                                     <option value="knockout">Knockout (Eliminación Directa)</option>
+                                    <option value="playoffs-single">Playoffs (Top 4/8 - Seeded)</option>
                                 </select>
                             </div>
                         </div>
