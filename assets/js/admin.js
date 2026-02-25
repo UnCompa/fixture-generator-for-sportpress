@@ -268,4 +268,59 @@ jQuery(document).ready(function($) {
             }
         });
     }
+
+    /**
+     * Tournament Groups Manager Logic
+     */
+    const $createGroupBtn = $('#fgsp-create-group-btn');
+    if ($createGroupBtn.length) {
+        $createGroupBtn.on('click', async function() {
+            const $btn = $(this);
+            const name = $('#fgsp-new-group-name').val();
+            const tournamentId = $('#fgsp-tournament-id').val();
+            const selectedTeams = [];
+            
+            $('input[name="fgsp_teams[]"]:checked').each(function() {
+                selectedTeams.push($(this).val());
+            });
+
+            if (!name) {
+                alert('Please enter a group name.');
+                return;
+            }
+
+            if (selectedTeams.length === 0) {
+                alert('Please select at least one team.');
+                return;
+            }
+
+            $btn.prop('disabled', true).html('<span class="dashicons dashicons-update spin"></span> Creating...');
+
+            try {
+                const response = await $.ajax({
+                    url: fgspData.ajaxUrl,
+                    type: 'POST',
+                    data: {
+                        action: 'fgsp_create_tournament_group',
+                        tournament_id: tournamentId,
+                        name: name,
+                        team_ids: selectedTeams,
+                        nonce: fgspData.nonce
+                    }
+                });
+
+                if (response.success) {
+                    alert('Group created successfully!');
+                    location.reload(); 
+                } else {
+                    alert('Error: ' + response.data);
+                }
+            } catch (err) {
+                console.error('Group Creation Failed:', err);
+                alert('Request failed. Check console.');
+            } finally {
+                $btn.prop('disabled', false).html('<span class="dashicons dashicons-plus-alt" style="vertical-align:middle; line-height:1.5;"></span> Create Group & Assign');
+            }
+        });
+    }
 });

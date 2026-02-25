@@ -289,6 +289,27 @@ select:focus {
   }
 }
 
+.spin {
+  animation: spin 2s infinite linear;
+  display: inline-block;
+}
+
+.fgsp-tournament-groups-ui {
+  margin-top: 10px;
+}
+
+.fgsp-team-selector-grid label:hover {
+  background: #f0f0f0;
+}
+
+.fgsp-group-item {
+  transition: background 0.2s ease;
+}
+
+.fgsp-group-item:hover {
+  background: #f9f9f9;
+}
+
 .fgsp-alert {
   padding: 10px 15px;
   border-radius: 8px;

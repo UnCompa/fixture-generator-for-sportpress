@@ -34,6 +34,29 @@ class FGSP_Plugin
         // AJAX handlers
         add_action('wp_ajax_fgsp_get_tournament_groups', array($this, 'ajax_get_tournament_groups'));
         add_action('wp_ajax_fgsp_generate_fixtures', array($this, 'ajax_generate_fixtures'));
+        add_action('wp_ajax_fgsp_create_tournament_group', array($this, 'ajax_create_tournament_group'));
+    }
+
+    public static function activate()
+    {
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'fgsp_logs';
+        $charset_collate = $wpdb->get_charset_collate();
+
+        $sql = "CREATE TABLE $table_name (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            table_id bigint(20) NOT NULL,
+            tournament_id bigint(20) NOT NULL,
+            algorithm varchar(50) NOT NULL,
+            event_count int(11) NOT NULL,
+            event_ids longtext NOT NULL,
+            generated_at datetime DEFAULT CURRENT_TIMESTAMP NOT NULL,
+            PRIMARY KEY  (id),
+            KEY table_id (table_id)
+        ) $charset_collate;";
+
+        require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+        dbDelta($sql);
     }
 
     public function add_meta_box()
@@ -44,6 +67,24 @@ class FGSP_Plugin
             array($this, 'render_meta_box'),
             'sp_table',
             'side',
+            'high'
+        );
+
+        add_meta_box(
+            'fgsp-generation-history',
+            __('Fixture Generation History', 'fixture-generator-for-sportpress'),
+            array($this, 'render_history_meta_box'),
+            array('sp_table', 'sp_tournament'),
+            'normal',
+            'low'
+        );
+
+        add_meta_box(
+            'fgsp-tournament-groups-manager',
+            __('Fixture Groups Manager', 'fixture-generator-for-sportpress'),
+            array($this, 'render_tournament_groups_meta_box'),
+            'sp_tournament',
+            'normal',
             'high'
         );
     }
@@ -90,9 +131,11 @@ class FGSP_Plugin
                             <label><?php _e('Algorithm', 'fixture-generator-for-sportpress'); ?></label>
                             <select id="fgsp-modal-algorithm" class="fgsp-algorithm-select" style="width: 100%;">
                                 <option value="round-robin">
-                                    <?php _e('Round Robin (Ida y Vuelta)', 'fixture-generator-for-sportpress'); ?></option>
+                                    <?php _e('Round Robin (Ida y Vuelta)', 'fixture-generator-for-sportpress'); ?>
+                                </option>
                                 <option value="single-round-robin">
-                                    <?php _e('Round Robin (Solo Ida)', 'fixture-generator-for-sportpress'); ?></option>
+                                    <?php _e('Round Robin (Solo Ida)', 'fixture-generator-for-sportpress'); ?>
+                                </option>
                                 <option value="random"><?php _e('Random Matchmaking', 'fixture-generator-for-sportpress'); ?>
                                 </option>
                             </select>
@@ -134,25 +177,146 @@ class FGSP_Plugin
                 <div class="fgsp-modal-footer">
                     <button type="button" id="fgsp-modal-cancel"
                         class="button"><?php _e('Cancel', 'fixture-generator-for-sportpress'); ?></button>
-                    <button type="button" id="fgsp-modal-submit" class="button button-primary fgsp-btn-premium-small"
-                        style="width:auto; margin:0;"><?php _e('Generate Now', 'fixture-generator-for-sportpress'); ?></button>
                 </div>
             </div>
         </div>
+        <?php
+    }
 
-        <style>
-            .fgsp-btn-premium-small {
-                background: #2ecc71 !important;
-                border: none !important;
-                color: white !important;
-                text-align: center;
-                display: block !important;
-                width: 100%;
-                height: auto !important;
-                padding: 10px !important;
-                font-weight: 700 !important;
-            }
-        </style>
+    public function render_tournament_groups_meta_box($post)
+    {
+        $teams = get_posts(array(
+            'post_type' => 'sp_team',
+            'posts_per_page' => -1,
+            'orderby' => 'title',
+            'order' => 'ASC'
+        ));
+
+        // Get currently associated groups (sp_table posts)
+        $tables = get_posts(array(
+            'post_type' => 'sp_table',
+            'posts_per_page' => -1,
+            'meta_query' => array(
+                array(
+                    'key' => 'sp_tournament',
+                    'value' => $post->ID
+                )
+            )
+        ));
+        ?>
+        <div class="fgsp-tournament-groups-ui">
+            <div id="fgsp-new-group-form"
+                style="background:#f8f9fa; padding:15px; border-radius:8px; border:1px solid #e2e4e7; margin-bottom:20px;">
+                <h4 style="margin-top:0;"><?php _e('Create New Group', 'fixture-generator-for-sportpress'); ?></h4>
+                <div class="fgsp-field" style="margin-bottom:10px;">
+                    <label
+                        style="display:block; margin-bottom:5px; font-weight:600;"><?php _e('Group Name', 'fixture-generator-for-sportpress'); ?></label>
+                    <input type="text" id="fgsp-new-group-name" placeholder="Ex: Grupo A, Fase 1..." style="width:100%;">
+                </div>
+                <div class="fgsp-field">
+                    <label
+                        style="display:block; margin-bottom:5px; font-weight:600;"><?php _e('Select Teams', 'fixture-generator-for-sportpress'); ?></label>
+                    <div class="fgsp-team-selector-grid"
+                        style="max-height:150px; overflow-y:auto; border:1px solid #ddd; padding:10px; background:#fff; border-radius:4px; display:grid; grid-template-columns: repeat(2, 1fr); gap: 5px;">
+                        <?php foreach ($teams as $team): ?>
+                            <label style="font-size:12px; display:flex; align-items:center; gap:5px; cursor:pointer;">
+                                <input type="checkbox" name="fgsp_teams[]" value="<?php echo $team->ID; ?>">
+                                <?php echo esc_html($team->post_title); ?>
+                            </label>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+                <input type="hidden" id="fgsp-tournament-id" value="<?php echo $post->ID; ?>">
+                <button type="button" id="fgsp-create-group-btn" class="button button-primary"
+                    style="margin-top:15px; width:100%;">
+                    <span class="dashicons dashicons-plus-alt" style="vertical-align:middle; line-height:1.5;"></span>
+                    <?php _e('Create Group & Assign', 'fixture-generator-for-sportpress'); ?>
+                </button>
+            </div>
+
+            <div id="fgsp-existing-groups">
+                <h4 style="border-bottom:1px solid #eee; padding-bottom:5px;">
+                    <?php _e('Associated Groups', 'fixture-generator-for-sportpress'); ?></h4>
+                <?php if (empty($tables)): ?>
+                    <p id="fgsp-no-groups-msg" style="font-style:italic; color:#777;">
+                        <?php _e('No groups created for this tournament yet.', 'fixture-generator-for-sportpress'); ?></p>
+                <?php endif; ?>
+                <div class="fgsp-groups-list">
+                    <?php foreach ($tables as $table):
+                        $table_teams = get_post_meta($table->ID, 'sp_teams', true);
+                        $team_count = is_array($table_teams) ? count(array_filter(array_keys($table_teams))) : 0;
+                        ?>
+                        <div class="fgsp-group-item"
+                            style="display:flex; justify-content:space-between; align-items:center; padding:8px; border-bottom:1px solid #eee;">
+                            <span><strong><?php echo esc_html($table->post_title); ?></strong> (<?php echo $team_count; ?>
+                                teams)</span>
+                            <a href="<?php echo get_edit_post_link($table->ID); ?>" class="button button-small"
+                                target="_blank"><?php _e('Edit', 'fixture-generator-for-sportpress'); ?></a>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        </div>
+        <?php
+    }
+
+    public function render_history_meta_box($post)
+    {
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'fgsp_logs';
+
+        // Fail-safe for table existence
+        if ($wpdb->get_var("SHOW TABLES LIKE '$table_name'") != $table_name) {
+            self::activate();
+        }
+
+        $logs = $wpdb->get_results($wpdb->prepare(
+            "SELECT * FROM $table_name WHERE (table_id = %d OR tournament_id = %d) ORDER BY generated_at DESC LIMIT 10",
+            $post->ID,
+            $post->ID
+        ));
+
+        if (empty($logs)) {
+            echo '<p>' . __('No generation history found for this group.', 'fixture-generator-for-sportpress') . '</p>';
+            return;
+        }
+        ?>
+        <table class="wp-list-table widefat fixed striped">
+            <thead>
+                <tr>
+                    <th><?php _e('Date', 'fixture-generator-for-sportpress'); ?></th>
+                    <th><?php _e('Algorithm', 'fixture-generator-for-sportpress'); ?></th>
+                    <th><?php _e('Events', 'fixture-generator-for-sportpress'); ?></th>
+                    <th><?php _e('Actions', 'fixture-generator-for-sportpress'); ?></th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($logs as $log): ?>
+                    <tr>
+                        <td><?php echo date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($log->generated_at)); ?>
+                        </td>
+                        <td><code
+                                style="background:#eee; padding:2px 5px; border-radius:3px;"><?php echo esc_html($log->algorithm); ?></code>
+                        </td>
+                        <td><strong><?php echo intval($log->event_count); ?></strong></td>
+                        <td>
+                            <?php
+                            $event_ids = json_decode($log->event_ids, true);
+                            if (is_array($event_ids)):
+                                $event_links = array();
+                                foreach (array_slice($event_ids, 0, 3) as $eid) {
+                                    $event_links[] = '<a href="' . get_edit_post_link($eid) . '" target="_blank">#' . $eid . '</a>';
+                                }
+                                echo implode(', ', $event_links);
+                                if (count($event_ids) > 3)
+                                    echo '...';
+                            endif;
+                            ?>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
         <?php
     }
 
@@ -172,9 +336,10 @@ class FGSP_Plugin
     {
         global $post;
         $is_generator_page = strpos($hook, 'fgsp-generator') !== false;
-        $is_sp_table_edit = ($hook === 'post.php' || $hook === 'post-new.php') && isset($post) && $post->post_type === 'sp_table';
+        $is_editor = ($hook === 'post.php' || $hook === 'post-new.php') && isset($post);
+        $is_supported_post_type = $is_editor && in_array($post->post_type, array('sp_table', 'sp_tournament'));
 
-        if (!$is_generator_page && !$is_sp_table_edit) {
+        if (!$is_generator_page && !$is_supported_post_type) {
             return;
         }
 
@@ -334,6 +499,7 @@ class FGSP_Plugin
         error_log("FGSP: Generated " . count($rounds) . " rounds");
 
         $created_count = 0;
+        $created_event_ids = array();
         $current_timestamp = strtotime($dt_string);
 
         foreach ($rounds as $r_idx => $matches) {
@@ -368,12 +534,76 @@ class FGSP_Plugin
                         wp_set_object_terms($event_id, intval($season_id), 'sp_season');
 
                     $created_count++;
+                    $created_event_ids[] = $event_id;
                 }
             }
             $current_timestamp += ($interval * DAY_IN_SECONDS);
         }
 
+        // Log to database
+        if ($created_count > 0) {
+            global $wpdb;
+            $wpdb->insert(
+                $wpdb->prefix . 'fgsp_logs',
+                array(
+                    'table_id' => $table_id,
+                    'tournament_id' => $tournament_id,
+                    'algorithm' => $algorithm,
+                    'event_count' => $created_count,
+                    'event_ids' => json_encode($created_event_ids),
+                    'generated_at' => current_time('mysql')
+                )
+            );
+        }
+
         wp_send_json_success(array('count' => $created_count));
+    }
+
+    public function ajax_create_tournament_group()
+    {
+        check_ajax_referer('fgsp_nonce', 'nonce');
+
+        $tournament_id = isset($_POST['tournament_id']) ? intval($_POST['tournament_id']) : 0;
+        $group_name = isset($_POST['name']) ? sanitize_text_field($_POST['name']) : '';
+        $team_ids = isset($_POST['team_ids']) ? array_map('intval', $_POST['team_ids']) : array();
+
+        if (!$tournament_id || !$group_name) {
+            wp_send_json_error('Missing required data.');
+        }
+
+        // Create the sp_table post
+        $table_id = wp_insert_post(array(
+            'post_title' => $group_name,
+            'post_type' => 'sp_table',
+            'post_status' => 'publish',
+        ));
+
+        if (!$table_id || is_wp_error($table_id)) {
+            wp_send_json_error('Failed to create group.');
+        }
+
+        // Link to tournament
+        update_post_meta($table_id, 'sp_tournament', $tournament_id);
+
+        // Assign teams
+        $teams_meta = array();
+        foreach ($team_ids as $tid) {
+            $teams_meta[$tid] = array('notes' => '');
+        }
+        update_post_meta($table_id, 'sp_teams', $teams_meta);
+
+        // Inherit Taxonomies from Tournament
+        $leagues = get_the_terms($tournament_id, 'sp_league');
+        $seasons = get_the_terms($tournament_id, 'sp_season');
+
+        if ($leagues && !is_wp_error($leagues)) {
+            wp_set_object_terms($table_id, intval($leagues[0]->term_id), 'sp_league');
+        }
+        if ($seasons && !is_wp_error($seasons)) {
+            wp_set_object_terms($table_id, intval($seasons[0]->term_id), 'sp_season');
+        }
+
+        wp_send_json_success(array('table_id' => $table_id));
     }
 
     private function generate_round_robin_schedule($teams, $balance = true)
@@ -427,3 +657,4 @@ function init()
 
 // Ejecutar inicialización inmediatamente
 init();
+register_activation_hook(__FILE__, array('FGSP_Plugin', 'activate'));
