@@ -215,6 +215,28 @@ class FGSP_Plugin
                                     style="width:100%; font-size:12px;" placeholder="18:00, 20:00">
                             </div>
 
+                            <div class="fgsp-field" style="margin-top: 10px;">
+                                <label
+                                    style="font-weight:600; display:block; margin-bottom:5px; font-size:12px;"><?php _e('Round Name Prefix', 'fixture-generator-for-sportpress'); ?></label>
+                                <input type="text" id="fgsp-modal-round-prefix" value="Jornada"
+                                    style="width:100%; font-size:12px;" placeholder="Jornada">
+                            </div>
+
+                            <div class="fgsp-field" style="margin-top: 10px;">
+                                <label
+                                    style="font-weight:600; display:block; margin-bottom:5px; font-size:12px;"><?php _e('Exclude Specific Dates (YYYY-MM-DD, comma separated)', 'fixture-generator-for-sportpress'); ?></label>
+                                <input type="text" id="fgsp-modal-exclude-dates" value="" style="width:100%; font-size:12px;"
+                                    placeholder="2026-12-25, 2027-01-01">
+                            </div>
+
+                            <div class="fgsp-field" style="margin-top: 10px;">
+                                <label
+                                    style="font-size: 13px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                                    <input type="checkbox" id="fgsp-modal-shuffle-teams">
+                                    <?php _e('Shuffle Teams before generation', 'fixture-generator-for-sportpress'); ?>
+                                </label>
+                            </div>
+
                             <div class="fgsp-field" style="margin-top:10px;">
                                 <label
                                     style="font-size: 13px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 5px;">
@@ -582,6 +604,8 @@ class FGSP_Plugin
         }
 
         $leagues = get_the_terms($tournament_id, 'sp_league');
+        $seasons = get_the_terms($tournament_id, 'sp_season');
+
         $args = array(
             'post_type' => 'sp_team',
             'posts_per_page' => -1,
@@ -589,15 +613,26 @@ class FGSP_Plugin
             'order' => 'ASC'
         );
 
+        $tax_query = array('relation' => 'AND');
+
         if ($leagues && !is_wp_error($leagues)) {
-            $league_ids = wp_list_pluck($leagues, 'term_id');
-            $args['tax_query'] = array(
-                array(
-                    'taxonomy' => 'sp_league',
-                    'field' => 'term_id',
-                    'terms' => $league_ids,
-                ),
+            $tax_query[] = array(
+                'taxonomy' => 'sp_league',
+                'field' => 'term_id',
+                'terms' => wp_list_pluck($leagues, 'term_id'),
             );
+        }
+
+        if ($seasons && !is_wp_error($seasons)) {
+            $tax_query[] = array(
+                'taxonomy' => 'sp_season',
+                'field' => 'term_id',
+                'terms' => wp_list_pluck($seasons, 'term_id'),
+            );
+        }
+
+        if (count($tax_query) > 1) {
+            $args['tax_query'] = $tax_query;
         }
 
         $teams = get_posts($args);
@@ -623,6 +658,14 @@ class FGSP_Plugin
         $start_time = isset($_POST['start_time']) ? sanitize_text_field($_POST['start_time']) : '18:00';
         $interval = isset($_POST['interval']) ? intval($_POST['interval']) : 7;
         $balance_home = isset($_POST['balance_home']) ? (bool) $_POST['balance_home'] : false;
+        $round_prefix = isset($_POST['round_prefix']) ? sanitize_text_field($_POST['round_prefix']) : 'Jornada';
+        $exclude_dates_str = isset($_POST['exclude_dates']) ? sanitize_text_field($_POST['exclude_dates']) : '';
+        $shuffle_teams_enabled = isset($_POST['shuffle_teams']) ? (bool) $_POST['shuffle_teams'] : false;
+
+        $exclude_dates = array();
+        if (!empty($exclude_dates_str)) {
+            $exclude_dates = array_map('trim', explode(',', $exclude_dates_str));
+        }
 
         $dt_string = $start_date . ' ' . $start_time;
 
@@ -640,6 +683,10 @@ class FGSP_Plugin
         }
         $team_ids = array_keys($team_ids_meta);
         $team_ids = array_filter($team_ids);
+
+        if ($shuffle_teams_enabled) {
+            shuffle($team_ids);
+        }
 
         error_log("FGSP: Found " . count($team_ids) . " teams: " . implode(', ', $team_ids));
 
@@ -711,36 +758,63 @@ class FGSP_Plugin
             // If not first round, advance date
             if ($r_idx > 0) {
                 $current_timestamp = strtotime(date('Y-m-d H:i:s', $current_timestamp) . " + $interval days");
+            }
 
-                // If allowed days specified, find next valid day
-                if (!empty($allowed_days)) {
-                    while (!in_array(date('w', $current_timestamp), $allowed_days)) {
-                        $current_timestamp = strtotime(date('Y-m-d H:i:s', $current_timestamp) . " + 1 day");
-                    }
+            // Ensure current date is VALID (Not excluded AND Allowed day)
+            $is_valid_date = false;
+            while (!$is_valid_date) {
+                $date_to_check = date('Y-m-d', $current_timestamp);
+                $day_of_week = date('w', $current_timestamp);
+
+                // 1. Check Excluded Dates
+                if (!empty($exclude_dates) && in_array($date_to_check, $exclude_dates)) {
+                    $current_timestamp = strtotime(date('Y-m-d H:i:s', $current_timestamp) . " + 1 day");
+                    continue;
                 }
+
+                // 2. Check Allowed Days
+                if (!empty($allowed_days) && !in_array($day_of_week, $allowed_days)) {
+                    $current_timestamp = strtotime(date('Y-m-d H:i:s', $current_timestamp) . " + 1 day");
+                    continue;
+                }
+
+                $is_valid_date = true;
             }
 
             $current_date_base = date('Y-m-d', $current_timestamp);
+
+            // Log teams that rest in this round
+            $playing_this_round = array();
+            foreach ($matches as $match) {
+                $playing_this_round[] = $match[0];
+                $playing_this_round[] = $match[1];
+            }
+            $resting = array_diff($team_ids, $playing_this_round);
+            foreach ($resting as $rest_id) {
+                $rest_name = get_the_title($rest_id);
+                error_log("FGSP: Team $rest_name rests in $round_prefix $round_num");
+            }
 
             foreach ($matches as $m_idx => $match) {
                 $home_id = $match[0];
                 $away_id = $match[1];
 
+                $home_name = get_the_title($home_id);
+                $away_name = get_the_title($away_id);
+
                 // Rotation of times
                 $this_match_time = $times_list[$m_idx % count($times_list)];
-                $this_event_date = $current_date_base . ' ' . $this_match_time;
-
-                $event_title = get_the_title($home_id) . ' vs ' . get_the_title($away_id);
+                $event_datetime = $current_date_base . ' ' . $this_match_time;
 
                 $event_id = wp_insert_post(array(
-                    'post_title' => $event_title,
+                    'post_title' => $home_name . ' vs ' . $away_name,
                     'post_type' => 'sp_event',
-                    'post_status' => 'publish',
-                    'post_date' => $this_event_date,
+                    'post_status' => 'future',
+                    'post_date' => $event_datetime,
                 ));
 
                 if ($event_id) {
-                    error_log("FGSP: Created Event $event_id: $event_title (Round $round_num, Date: $this_event_date)");
+                    error_log("FGSP: Created Event $event_id: $home_name vs $away_name ($round_prefix $round_num, Date: $event_datetime)");
                     update_post_meta($event_id, 'sp_team', $home_id);
                     add_post_meta($event_id, 'sp_team', $away_id);
                     update_post_meta($event_id, 'sp_tournament', $tournament_id);

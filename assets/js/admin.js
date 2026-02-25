@@ -148,6 +148,22 @@ jQuery(document).ready(function($) {
                             </div>
 
                             <div class="fgsp-field" style="margin-top: 10px;">
+                                <div class="fgsp-config-title">Round Name Prefix</div>
+                                <input type="text" class="fgsp-round-prefix" placeholder="Jornada" style="width: 100%; font-size: 12px;" value="Jornada">
+                            </div>
+
+                            <div class="fgsp-field" style="margin-top: 10px;">
+                                <div class="fgsp-config-title">Exclude Specific Dates (YYYY-MM-DD, comma separated)</div>
+                                <input type="text" class="fgsp-exclude-dates" placeholder="2026-12-25, 2027-01-01" style="width: 100%; font-size: 12px;">
+                            </div>
+
+                            <div class="fgsp-field" style="margin-top: 10px;">
+                                <label style="font-size: 0.8rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                                    <input type="checkbox" class="fgsp-shuffle-teams"> Shuffle Teams before generation
+                                </label>
+                            </div>
+
+                            <div class="fgsp-field" style="margin-top: 10px;">
                                 <label style="font-size: 0.8rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 5px;">
                                     <input type="checkbox" class="fgsp-assign-venue" checked> Auto-assign Venue
                                 </label>
@@ -227,6 +243,9 @@ jQuery(document).ready(function($) {
                         allowed_days: $card.find('.fgsp-day:checked').map(function() { return $(this).val(); }).get(),
                         rotate_times: $card.find('.fgsp-rotate-times').val(),
                         assign_venue: $card.find('.fgsp-assign-venue').is(':checked') ? 1 : 0,
+                        round_prefix: $card.find('.fgsp-round-prefix').val(),
+                        exclude_dates: $card.find('.fgsp-exclude-dates').val(),
+                        shuffle_teams: $card.find('.fgsp-shuffle-teams').is(':checked') ? 1 : 0,
                         nonce: fgspData.nonce
                     }
                 });
@@ -317,6 +336,9 @@ jQuery(document).ready(function($) {
                         allowed_days: $('.fgsp-modal-day:checked').map(function() { return $(this).val(); }).get(),
                         rotate_times: $('#fgsp-modal-rotate-times').val(),
                         assign_venue: $('#fgsp-modal-assign-venue').is(':checked') ? 1 : 0,
+                        round_prefix: $('#fgsp-modal-round-prefix').val(),
+                        exclude_dates: $('#fgsp-modal-exclude-dates').val(),
+                        shuffle_teams: $('#fgsp-modal-shuffle-teams').is(':checked') ? 1 : 0,
                         nonce: fgspData.nonce
                     }
                 });
