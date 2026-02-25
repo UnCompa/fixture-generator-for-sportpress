@@ -86,12 +86,26 @@ jQuery(document).ready(function($) {
                     </ul>
 
                     <div class="fgsp-config-section">
-                        <div class="fgsp-config-title">Algorithm</div>
-                        <select class="fgsp-algorithm-select" style="width: 100%;">
-                            <option value="round-robin">Round Robin (Ida y Vuelta)</option>
-                            <option value="single-round-robin">Round Robin (Solo Ida)</option>
-                            <option value="random">Emparejamiento Aleatorio</option>
-                        </select>
+                        <div class="fgsp-config-row">
+                            <div class="fgsp-field">
+                                <div class="fgsp-config-title">Algorithm</div>
+                                <select class="fgsp-algorithm-select" style="width: 100%;">
+                                    <option value="round-robin">Round Robin (Ida y Vuelta)</option>
+                                    <option value="single-round-robin">Round Robin (Solo Ida)</option>
+                                    <option value="random">Emparejamiento Aleatorio</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="fgsp-config-row" style="margin-top: 15px; display: flex; gap: 15px;">
+                            <div class="fgsp-field" style="flex: 1;">
+                                <div class="fgsp-config-title">Start Date</div>
+                                <input type="date" class="fgsp-start-date" value="${new Date().toISOString().split('T')[0]}" style="width: 100%;">
+                            </div>
+                            <div class="fgsp-field" style="flex: 1;">
+                                <div class="fgsp-config-title">Interval (Days)</div>
+                                <input type="number" class="fgsp-interval" value="7" min="1" max="365" style="width: 100%;">
+                            </div>
+                        </div>
                     </div>
                 </div>
             `;
@@ -100,4 +114,74 @@ jQuery(document).ready(function($) {
         $groupsContainer.html(html).show();
         $actions.fadeIn(400);
     }
+
+    $(document).on('click', '#fgsp-generate-all', async function() {
+        const $btn = $(this);
+        const $progressContainer = $('.fgsp-progress-container');
+        const $progressFill = $('.fgsp-progress-fill');
+        const $progressText = $('.fgsp-progress-text');
+        const tournamentId = $selector.val();
+        
+        const $groupCards = $('.fgsp-group-card:not(.incomplete)');
+        const totalGroups = $groupCards.length;
+
+        if (totalGroups === 0) {
+            alert('No groups with enough teams to generate fixtures.');
+            return;
+        }
+
+        if (!confirm(`Are you sure you want to generate all fixtures for ${totalGroups} groups?`)) {
+            return;
+        }
+
+        $btn.prop('disabled', true).addClass('updating');
+        $progressContainer.fadeIn();
+        
+        let completed = 0;
+
+        for (let i = 0; i < $groupCards.length; i++) {
+            const $card = $($groupCards[i]);
+            const tableId = $card.attr('id').replace('group-', '');
+            const algorithm = $card.find('.fgsp-algorithm-select').val();
+            const startDate = $card.find('.fgsp-start-date').val();
+            const interval = $card.find('.fgsp-interval').val();
+
+            console.log(`FGSP: Generating fixtures for group ${tableId}...`);
+            try {
+                const response = await $.ajax({
+                    url: fgspData.ajaxUrl,
+                    type: 'POST',
+                    data: {
+                        action: 'fgsp_generate_fixtures',
+                        tournament_id: tournamentId,
+                        table_id: tableId,
+                        algorithm: algorithm,
+                        start_date: startDate,
+                        interval: interval,
+                        nonce: fgspData.nonce
+                    }
+                });
+
+                if (response.success) {
+                    completed++;
+                    console.log(`FGSP: Success for group ${tableId}. Created ${response.data.count} events.`);
+                    const percent = Math.round((completed / totalGroups) * 100);
+                    $progressFill.css('width', percent + '%');
+                    $progressText.text(`${percent}% (${completed}/${totalGroups} groups completed)`);
+                } else {
+                    console.error(`FGSP Error in group ${tableId}:`, response.data);
+                }
+            } catch (err) {
+                console.error(`Request failed for group ${tableId}:`, err);
+            }
+        }
+
+        $btn.prop('disabled', false).removeClass('updating');
+        alert(`Finished! Generated fixtures for ${completed} groups.`);
+        
+        setTimeout(() => {
+            $progressContainer.fadeOut();
+            $progressFill.css('width', '0%');
+        }, 3000);
+    });
 });

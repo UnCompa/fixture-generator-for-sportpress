@@ -186,8 +186,62 @@
 
 .fgsp-footer-actions {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
   padding: 40px 0;
+}
+
+/* Progress Bar */
+.fgsp-progress-container {
+  background: var(--fgsp-white);
+  padding: 20px;
+  border-radius: var(--fgsp-radius);
+  box-shadow: var(--fgsp-shadow);
+  margin-bottom: 25px;
+}
+
+.fgsp-progress-bar {
+  height: 12px;
+  background: #eee;
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.fgsp-progress-fill {
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    var(--fgsp-primary),
+    var(--fgsp-secondary)
+  );
+  transition: width 0.4s ease;
+}
+
+.fgsp-progress-text {
+  text-align: center;
+  font-weight: 700;
+  color: var(--fgsp-dark);
+  font-size: 0.9rem;
+}
+
+/* Inputs */
+input[type="date"],
+input[type="number"],
+select.fgsp-algorithm-select {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  color: var(--fgsp-dark);
+  font-size: 0.9rem;
+  transition: border-color 0.3s;
+}
+
+input:focus,
+select:focus {
+  border-color: var(--fgsp-primary);
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(46, 204, 113, 0.2);
 }
 
 /* Animations */

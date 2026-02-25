@@ -24,9 +24,9 @@
                 <label for="fgsp-tournament-selector">
                     <?php _e('Tournament', 'fixture-generator-for-sportpress'); ?>
                 </label>
-                <select id="fgsp-tournament-selector" class="fgsp-select-2" 
-                        data-preselected-tournament="<?php echo esc_attr($preselected_tournament); ?>" 
-                        data-preselected-table="<?php echo esc_attr($preselected_table); ?>">
+                <select id="fgsp-tournament-selector" class="fgsp-select-2"
+                    data-preselected-tournament="<?php echo esc_attr($preselected_tournament); ?>"
+                    data-preselected-table="<?php echo esc_attr($preselected_table); ?>">
                     <option value="">
                         <?php _e('-- Choose a Tournament --', 'fixture-generator-for-sportpress'); ?>
                     </option>
@@ -45,6 +45,12 @@
     </div>
 
     <div id="fgsp-global-actions" class="fgsp-footer-actions" style="display: none;">
+        <div class="fgsp-progress-container" style="display: none; width: 100%; max-width: 600px; margin-bottom: 20px;">
+            <div class="fgsp-progress-bar">
+                <div class="fgsp-progress-fill" style="width: 0%;"></div>
+            </div>
+            <div class="fgsp-progress-text">0%</div>
+        </div>
         <button id="fgsp-generate-all" class="button button-primary button-large fgsp-btn-premium">
             <span class="dashicons dashicons-randomize"></span>
             <?php _e('Generate All Fixtures', 'fixture-generator-for-sportpress'); ?>
