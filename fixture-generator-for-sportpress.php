@@ -35,6 +35,7 @@ class FGSP_Plugin
         add_action('wp_ajax_fgsp_get_tournament_groups', array($this, 'ajax_get_tournament_groups'));
         add_action('wp_ajax_fgsp_generate_fixtures', array($this, 'ajax_generate_fixtures'));
         add_action('wp_ajax_fgsp_create_tournament_group', array($this, 'ajax_create_tournament_group'));
+        add_action('wp_ajax_fgsp_get_eligible_teams', array($this, 'ajax_get_eligible_teams'));
     }
 
     public static function activate()
@@ -86,6 +87,15 @@ class FGSP_Plugin
             'sp_tournament',
             'normal',
             'high'
+        );
+
+        add_meta_box(
+            'fgsp-tournament-events',
+            __('Tournament Events', 'fixture-generator-for-sportpress'),
+            array($this, 'render_tournament_events_meta_box'),
+            'sp_tournament',
+            'normal',
+            'default'
         );
     }
 
@@ -283,6 +293,63 @@ class FGSP_Plugin
         <?php
     }
 
+    public function render_tournament_events_meta_box($post)
+    {
+        $events = get_posts(array(
+            'post_type' => 'sp_event',
+            'posts_per_page' => -1,
+            'meta_query' => array(
+                array(
+                    'key' => 'sp_tournament',
+                    'value' => $post->ID
+                )
+            ),
+            'orderby' => 'post_date',
+            'order' => 'DESC'
+        ));
+
+        if (empty($events)) {
+            echo '<p>' . __('No events found for this tournament.', 'fixture-generator-for-sportpress') . '</p>';
+            return;
+        }
+
+        ?>
+        <div class="fgsp-events-list-wrapper" style="max-height: 400px; overflow-y: auto;">
+            <table class="wp-list-table widefat fixed striped">
+                <thead>
+                    <tr>
+                        <th style="width: 35%;"><?php _e('Event', 'fixture-generator-for-sportpress'); ?></th>
+                        <th><?php _e('Group / Table', 'fixture-generator-for-sportpress'); ?></th>
+                        <th><?php _e('Date', 'fixture-generator-for-sportpress'); ?></th>
+                        <th><?php _e('Status', 'fixture-generator-for-sportpress'); ?></th>
+                        <th style="width:60px;"><?php _e('Actions', 'fixture-generator-for-sportpress'); ?></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($events as $event):
+                        $table_id = get_post_meta($event->ID, 'sp_table', true);
+                        $table_title = $table_id ? get_the_title($table_id) : '-';
+                        ?>
+                        <tr>
+                            <td><strong><?php echo esc_html($event->post_title); ?></strong></td>
+                            <td><?php echo esc_html($table_title); ?></td>
+                            <td><?php echo get_the_time(get_option('date_format') . ' ' . get_option('time_format'), $event); ?>
+                            </td>
+                            <td><span class="status-<?php echo esc_attr($event->post_status); ?>"
+                                    style="padding: 2px 6px; border-radius: 4px; background: #eee; font-size: 10px; text-transform: uppercase; font-weight: bold;"><?php echo esc_html($event->post_status); ?></span>
+                            </td>
+                            <td>
+                                <a href="<?php echo get_edit_post_link($event->ID); ?>" class="button button-small"
+                                    target="_blank"><?php _e('Edit', 'fixture-generator-for-sportpress'); ?></a>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+        <?php
+    }
+
     public function render_history_meta_box($post)
     {
         global $wpdb;
@@ -435,6 +502,56 @@ class FGSP_Plugin
                 'id' => $group->ID,
                 'title' => $group->post_title,
                 'teams' => $teams,
+            );
+        }
+
+        $leagues = get_the_terms($tournament_id, 'sp_league');
+        $league_ids = array();
+        if ($leagues && !is_wp_error($leagues)) {
+            $league_ids = wp_list_pluck($leagues, 'term_id');
+        }
+
+        wp_send_json_success(array(
+            'groups' => $response,
+            'leagues' => $league_ids
+        ));
+    }
+
+    public function ajax_get_eligible_teams()
+    {
+        check_ajax_referer('fgsp_nonce', 'nonce');
+
+        $tournament_id = isset($_POST['tournament_id']) ? intval($_POST['tournament_id']) : 0;
+
+        if (!$tournament_id) {
+            wp_send_json_error('Invalid tournament ID');
+        }
+
+        $leagues = get_the_terms($tournament_id, 'sp_league');
+        $args = array(
+            'post_type' => 'sp_team',
+            'posts_per_page' => -1,
+            'orderby' => 'title',
+            'order' => 'ASC'
+        );
+
+        if ($leagues && !is_wp_error($leagues)) {
+            $league_ids = wp_list_pluck($leagues, 'term_id');
+            $args['tax_query'] = array(
+                array(
+                    'taxonomy' => 'sp_league',
+                    'field' => 'term_id',
+                    'terms' => $league_ids,
+                ),
+            );
+        }
+
+        $teams = get_posts($args);
+        $response = array();
+        foreach ($teams as $team) {
+            $response[] = array(
+                'id' => $team->ID,
+                'name' => $team->post_title
             );
         }
 

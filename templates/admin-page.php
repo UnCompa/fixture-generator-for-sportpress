@@ -44,20 +44,51 @@
         <!-- Groups will be loaded here via AJAX -->
     </div>
 
-    <div id="fgsp-global-actions" class="fgsp-footer-actions" style="display: none;">
-        <div class="fgsp-progress-container" style="display: none; width: 100%; max-width: 600px; margin-bottom: 20px;">
-            <div class="fgsp-progress-bar">
-                <div class="fgsp-progress-fill" style="width: 0%;"></div>
-            </div>
-            <div class="fgsp-progress-text">0%</div>
+    <!-- Create Group UI for Main Admin Page -->
+    <div id="fgsp-create-group-container" class="fgsp-main-card"
+        style="display: none; border-top: 4px solid var(--fgsp-secondary);">
+        <div class="fgsp-card-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <h2 style="margin:0;"><?php _e('Add New Group', 'fixture-generator-for-sportpress'); ?></h2>
+            <button type="button" class="fgsp-close-creation-form button-link"
+                style="color:#e74c3c; text-decoration:none;"><span class="dashicons dashicons-no-alt"></span>
+                Cancel</button>
         </div>
-        <button id="fgsp-generate-all" class="button button-primary button-large fgsp-btn-premium">
-            <span class="dashicons dashicons-randomize"></span>
-            <?php _e('Generate All Fixtures', 'fixture-generator-for-sportpress'); ?>
-        </button>
+        <div class="fgsp-card-body">
+            <div class="fgsp-form-group">
+                <label><?php _e('Group Name', 'fixture-generator-for-sportpress'); ?></label>
+                <input type="text" id="fgsp-main-new-group-name" placeholder="Ex: Grupo A, Fase 1..."
+                    class="regular-text" style="width:100%; max-width:400px; display:block;">
+            </div>
+            <div class="fgsp-form-group">
+                <label><?php _e('Select Teams (Filtered by League)', 'fixture-generator-for-sportpress'); ?></label>
+                <div id="fgsp-main-team-selector" class="fgsp-team-selector-grid"
+                    style="max-height:200px; overflow-y:auto; border:1px solid #ddd; padding:15px; background:#f9f9f9; border-radius:8px; display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px;">
+                    <!-- Teams loaded here -->
+                </div>
+            </div>
+            <div style="margin-top:20px;">
+                <button type="button" id="fgsp-main-create-group-btn" class="button button-primary button-large">
+                    <span class="dashicons dashicons-plus-alt"></span>
+                    <?php _e('Create Group & Assign', 'fixture-generator-for-sportpress'); ?>
+                </button>
+            </div>
+        </div>
     </div>
 
-    <div id="fgsp-loader" class="fgsp-overlay" style="display: none;">
-        <div class="fgsp-spinner"></div>
+    <div id="fgsp-global-actions" class="fgsp-footer-actions" style="display: none;">
+        <div style="display: flex; gap: 15px; width: 100%; justify-content: center; margin-bottom: 20px;">
+            <button id="fgsp-show-create-form" class="button button-secondary button-large">
+                <span class="dashicons dashicons-plus"></span>
+                <?php _e('Create New Group', 'fixture-generator-for-sportpress'); ?>
+            </button>
+            <button id="fgsp-generate-all" class="button button-primary button-large fgsp-btn-premium"
+                style="margin: 0;">
+                <span class="dashicons dashicons-randomize"></span>
+                <?php _e('Generate All Fixtures', 'fixture-generator-for-sportpress'); ?>
+            </button>
+        </div>
+
+        <div id="fgsp-loader" class="fgsp-overlay" style="display: none;">
+            <div class="fgsp-spinner"></div>
+        </div>
     </div>
-</div>

@@ -49,10 +49,13 @@ jQuery(document).ready(function($) {
         });
     }
 
-    function renderGroups(groups, preselectedTable = 0) {
+    function renderGroups(data, preselectedTable = 0) {
+        // En la versión actualizada, data es { groups: [], leagues: [] }
+        const groups = data.groups || [];
+        
         if (!groups.length) {
-            $groupsContainer.html('<div class="fgsp-main-card"><p>No groups found for this tournament.</p></div>').show();
-            $actions.hide();
+            $groupsContainer.html('<div class="fgsp-main-card"><p>No groups found for this tournament. Use the button below to create the first one!</p></div>').show();
+            $actions.fadeIn(400); // Mostramos el contenedor de acciones para que se vea el botón de crear
             return;
         }
 
@@ -139,7 +142,7 @@ jQuery(document).ready(function($) {
         const totalGroups = $groupCards.length;
 
         if (totalGroups === 0) {
-            alert('No groups with enough teams to generate fixtures.');
+            alert('No groups ready for fixture generation. Please create a group and add at least 2 teams first.');
             return;
         }
 
@@ -270,7 +273,7 @@ jQuery(document).ready(function($) {
     }
 
     /**
-     * Tournament Groups Manager Logic
+     * Tournament Groups Manager Logic (Tournament Page)
      */
     const $createGroupBtn = $('#fgsp-create-group-btn');
     if ($createGroupBtn.length) {
@@ -323,4 +326,102 @@ jQuery(document).ready(function($) {
             }
         });
     }
+
+    /**
+     * Main Generator Page - Group Creation Logic
+     */
+    const $showCreateFormBtn = $('#fgsp-show-create-form');
+    const $creationContainer = $('#fgsp-create-group-container');
+    const $teamSelector = $('#fgsp-main-team-selector');
+
+    $showCreateFormBtn.on('click', function() {
+        const tournamentId = $selector.val();
+        if(!tournamentId) return;
+
+        $groupsContainer.hide();
+        $actions.hide();
+        $creationContainer.fadeIn();
+
+        // Load filtered teams
+        $teamSelector.html('<p><span class="dashicons dashicons-update spin"></span> Loading eligible teams...</p>');
+        
+        $.ajax({
+            url: fgspData.ajaxUrl,
+            type: 'POST',
+            data: {
+                action: 'fgsp_get_eligible_teams',
+                tournament_id: tournamentId,
+                nonce: fgspData.nonce
+            },
+            success: function(response) {
+                if (response.success) {
+                    let html = '';
+                    if (response.data.length > 0) {
+                        response.data.forEach(team => {
+                            html += `
+                                <label style="display:flex; align-items:center; gap:8px; padding:8px; background:#fff; border-radius:4px; border:1px solid #eee; cursor:pointer;">
+                                    <input type="checkbox" name="fgsp_main_teams[]" value="${team.id}">
+                                    <span style="font-size:13px; font-weight:500;">${team.name}</span>
+                                </label>`;
+                        });
+                    } else {
+                        html = '<p>No teams found for the tournament league.</p>';
+                    }
+                    $teamSelector.html(html);
+                } else {
+                    $teamSelector.html('<p>Error loading teams.</p>');
+                }
+            }
+        });
+    });
+
+    $('.fgsp-close-creation-form').on('click', function() {
+        $creationContainer.hide();
+        $groupsContainer.show();
+        $actions.show();
+    });
+
+    $('#fgsp-main-create-group-btn').on('click', async function() {
+        const $btn = $(this);
+        const name = $('#fgsp-main-new-group-name').val();
+        const tournamentId = $selector.val();
+        const selectedTeams = [];
+        
+        $('input[name="fgsp_main_teams[]"]:checked').each(function() {
+            selectedTeams.push($(this).val());
+        });
+
+        if (!name) { alert('Please enter a group name.'); return; }
+        if (selectedTeams.length === 0) { alert('Please select teams.'); return; }
+
+        $btn.prop('disabled', true).html('<span class="dashicons dashicons-update spin"></span> Creating...');
+
+        try {
+            const response = await $.ajax({
+                url: fgspData.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'fgsp_create_tournament_group',
+                    tournament_id: tournamentId,
+                    name: name,
+                    team_ids: selectedTeams,
+                    nonce: fgspData.nonce
+                }
+            });
+
+            if (response.success) {
+                alert('Group created successfully!');
+                $creationContainer.hide();
+                $selector.trigger('change'); // Reload groups
+                $('#fgsp-main-new-group-name').val('');
+            } else {
+                alert('Error: ' + response.data);
+            }
+        } catch (err) {
+            alert('Request failed.');
+        } finally {
+            $btn.prop('disabled', false).html('<span class="dashicons dashicons-plus-alt"></span> Create Group & Assign');
+        }
+    });
+
 });
