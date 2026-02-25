@@ -92,18 +92,31 @@ jQuery(document).ready(function($) {
                                 <select class="fgsp-algorithm-select" style="width: 100%;">
                                     <option value="round-robin">Round Robin (Ida y Vuelta)</option>
                                     <option value="single-round-robin">Round Robin (Solo Ida)</option>
+                                    <option value="reverse-round-robin">Round Robin (Vuelta e Ida)</option>
                                     <option value="random">Emparejamiento Aleatorio</option>
+                                    <option value="knockout">Knockout (Eliminación Directa)</option>
                                 </select>
                             </div>
                         </div>
-                        <div class="fgsp-config-row" style="margin-top: 15px; display: flex; gap: 15px;">
-                            <div class="fgsp-field" style="flex: 1;">
+                        <div class="fgsp-config-row" style="margin-top: 15px; display: flex; gap: 10px;">
+                            <div class="fgsp-field" style="flex: 1.5;">
                                 <div class="fgsp-config-title">Start Date</div>
                                 <input type="date" class="fgsp-start-date" value="${new Date().toISOString().split('T')[0]}" style="width: 100%;">
                             </div>
                             <div class="fgsp-field" style="flex: 1;">
+                                <div class="fgsp-config-title">Time</div>
+                                <input type="time" class="fgsp-start-time" value="18:00" style="width: 100%;">
+                            </div>
+                        </div>
+                        <div class="fgsp-config-row" style="margin-top: 15px; display: flex; gap: 10px;">
+                            <div class="fgsp-field" style="flex: 1;">
                                 <div class="fgsp-config-title">Interval (Days)</div>
                                 <input type="number" class="fgsp-interval" value="7" min="1" max="365" style="width: 100%;">
+                            </div>
+                            <div class="fgsp-field" style="flex: 2; align-self: end; padding-bottom: 5px;">
+                                <label style="font-size: 0.8rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                                    <input type="checkbox" class="fgsp-balance-home" checked> Balance Localía
+                                </label>
                             </div>
                         </div>
                     </div>
@@ -144,7 +157,9 @@ jQuery(document).ready(function($) {
             const tableId = $card.attr('id').replace('group-', '');
             const algorithm = $card.find('.fgsp-algorithm-select').val();
             const startDate = $card.find('.fgsp-start-date').val();
+            const startTime = $card.find('.fgsp-start-time').val();
             const interval = $card.find('.fgsp-interval').val();
+            const balanceHome = $card.find('.fgsp-balance-home').is(':checked') ? 1 : 0;
 
             console.log(`FGSP: Generating fixtures for group ${tableId}...`);
             try {
@@ -157,7 +172,9 @@ jQuery(document).ready(function($) {
                         table_id: tableId,
                         algorithm: algorithm,
                         start_date: startDate,
+                        start_time: startTime,
                         interval: interval,
+                        balance_home: balanceHome,
                         nonce: fgspData.nonce
                     }
                 });
@@ -184,4 +201,71 @@ jQuery(document).ready(function($) {
             $progressFill.css('width', '0%');
         }, 3000);
     });
+
+    /**
+     * Modal Logic for Quick Generation (sp_table edit page)
+     */
+    const $quickModal = $('#fgsp-quick-modal');
+    if ($quickModal.length) {
+        const $modalProgress = $('#fgsp-modal-progress');
+        const $modalSubmit = $('#fgsp-modal-submit');
+
+        $('#fgsp-open-modal').on('click', function() {
+            $quickModal.fadeIn(300).css('display', 'flex');
+        });
+
+        $('.fgsp-close-modal, #fgsp-modal-cancel').on('click', function() {
+            if (!$modalSubmit.prop('disabled')) {
+                $quickModal.fadeOut(200);
+            }
+        });
+
+        $modalSubmit.on('click', async function() {
+            const tournamentId = $('#fgsp-modal-tournament-id').val();
+            const tableId = $('#fgsp-modal-table-id').val();
+            const algorithm = $('#fgsp-modal-algorithm').val();
+            const startDate = $('#fgsp-modal-date').val();
+            const startTime = $('#fgsp-modal-time').val();
+            const interval = $('#fgsp-modal-interval').val();
+            const balanceHome = $('#fgsp-modal-balance').is(':checked') ? 1 : 0;
+
+            if (!tournamentId) {
+                alert('Tournament ID not found. Please link this table to a tournament first.');
+                return;
+            }
+
+            $modalSubmit.prop('disabled', true).text('Generating...');
+            $modalProgress.slideDown();
+
+            try {
+                const response = await $.ajax({
+                    url: fgspData.ajaxUrl,
+                    type: 'POST',
+                    data: {
+                        action: 'fgsp_generate_fixtures',
+                        tournament_id: tournamentId,
+                        table_id: tableId,
+                        algorithm: algorithm,
+                        start_date: startDate,
+                        start_time: startTime,
+                        interval: interval,
+                        balance_home: balanceHome,
+                        nonce: fgspData.nonce
+                    }
+                });
+
+                if (response.success) {
+                    alert(`Success! Generated ${response.data.count} events.`);
+                    location.reload(); // Reload to see results in SportsPress calendars
+                } else {
+                    alert('Error: ' + response.data);
+                }
+            } catch (err) {
+                console.error('Modal Request Failed:', err);
+                alert('Request failed. Check console for details.');
+            } finally {
+                $modalSubmit.prop('disabled', false).text('Generate Now');
+            }
+        });
+    }
 });

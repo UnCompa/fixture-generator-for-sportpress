@@ -52,6 +52,7 @@ class FGSP_Plugin
     {
         $team_ids = get_post_meta($post->ID, 'sp_teams', true);
         $count = is_array($team_ids) ? count(array_filter(array_keys($team_ids))) : 0;
+        $tournament_id = get_post_meta($post->ID, 'sp_tournament', true);
         ?>
         <div class="fgsp-meta-box-content">
             <p><strong><?php echo $count; ?></strong> <?php _e('teams detected.', 'fixture-generator-for-sportpress'); ?></p>
@@ -60,12 +61,85 @@ class FGSP_Plugin
                     <p><?php _e('Need at least 2 teams.', 'fixture-generator-for-sportpress'); ?></p>
                 </div>
             <?php else: ?>
-                <a href="<?php echo admin_url('admin.php?page=fgsp-generator&sp_table=' . $post->ID); ?>"
-                    class="button button-primary fgsp-btn-premium-small">
-                    <?php _e('Configure & Generate', 'fixture-generator-for-sportpress'); ?>
-                </a>
+                <button type="button" id="fgsp-open-modal" class="button button-primary fgsp-btn-premium-small">
+                    <span class="dashicons dashicons-randomize"></span>
+                    <?php _e('Generate Fixtures', 'fixture-generator-for-sportpress'); ?>
+                </button>
+                <p style="text-align: center; margin-top: 10px;">
+                    <a href="<?php echo admin_url('admin.php?page=fgsp-generator&sp_table=' . $post->ID); ?>"
+                        style="font-size: 11px;">
+                        <?php _e('Use advanced generator', 'fixture-generator-for-sportpress'); ?>
+                    </a>
+                </p>
             <?php endif; ?>
         </div>
+
+        <!-- Hidden Modal for Quick Generation -->
+        <div id="fgsp-quick-modal" class="fgsp-modal" style="display:none;">
+            <div class="fgsp-modal-content">
+                <div class="fgsp-modal-header">
+                    <h3><?php _e('Quick Fixture Generation', 'fixture-generator-for-sportpress'); ?></h3>
+                    <span class="fgsp-close-modal">&times;</span>
+                </div>
+                <div class="fgsp-modal-body">
+                    <div class="fgsp-config-section">
+                        <input type="hidden" id="fgsp-modal-tournament-id" value="<?php echo esc_attr($tournament_id); ?>">
+                        <input type="hidden" id="fgsp-modal-table-id" value="<?php echo esc_attr($post->ID); ?>">
+
+                        <div class="fgsp-field">
+                            <label><?php _e('Algorithm', 'fixture-generator-for-sportpress'); ?></label>
+                            <select id="fgsp-modal-algorithm" class="fgsp-algorithm-select" style="width: 100%;">
+                                <option value="round-robin">
+                                    <?php _e('Round Robin (Ida y Vuelta)', 'fixture-generator-for-sportpress'); ?></option>
+                                <option value="single-round-robin">
+                                    <?php _e('Round Robin (Solo Ida)', 'fixture-generator-for-sportpress'); ?></option>
+                                <option value="random"><?php _e('Random Matchmaking', 'fixture-generator-for-sportpress'); ?>
+                                </option>
+                            </select>
+                        </div>
+
+                        <div style="display:flex; gap:10px; margin-top:15px;">
+                            <div class="fgsp-field" style="flex:1;">
+                                <label><?php _e('Start Date', 'fixture-generator-for-sportpress'); ?></label>
+                                <input type="date" id="fgsp-modal-date" value="<?php echo date('Y-m-d'); ?>"
+                                    style="width: 100%;">
+                            </div>
+                            <div class="fgsp-field" style="flex:1;">
+                                <label><?php _e('Time', 'fixture-generator-for-sportpress'); ?></label>
+                                <input type="time" id="fgsp-modal-time" value="18:00" style="width: 100%;">
+                            </div>
+                        </div>
+
+                        <div style="display:flex; gap:10px; margin-top:15px; align-items:center;">
+                            <div class="fgsp-field" style="flex:1;">
+                                <label><?php _e('Interval (Days)', 'fixture-generator-for-sportpress'); ?></label>
+                                <input type="number" id="fgsp-modal-interval" value="7" min="1" style="width: 100%;">
+                            </div>
+                            <div class="fgsp-field" style="flex:1; padding-top:20px;">
+                                <label style="cursor:pointer;">
+                                    <input type="checkbox" id="fgsp-modal-balance" checked>
+                                    <?php _e('Balance Home/Away', 'fixture-generator-for-sportpress'); ?>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="fgsp-modal-progress" class="fgsp-progress-container" style="display:none; margin-top:20px;">
+                        <div class="fgsp-progress-bar">
+                            <div class="fgsp-progress-fill" style="width: 100%;"></div>
+                        </div>
+                        <p class="fgsp-progress-text"><?php _e('Generating...', 'fixture-generator-for-sportpress'); ?></p>
+                    </div>
+                </div>
+                <div class="fgsp-modal-footer">
+                    <button type="button" id="fgsp-modal-cancel"
+                        class="button"><?php _e('Cancel', 'fixture-generator-for-sportpress'); ?></button>
+                    <button type="button" id="fgsp-modal-submit" class="button button-primary fgsp-btn-premium-small"
+                        style="width:auto; margin:0;"><?php _e('Generate Now', 'fixture-generator-for-sportpress'); ?></button>
+                </div>
+            </div>
+        </div>
+
         <style>
             .fgsp-btn-premium-small {
                 background: #2ecc71 !important;
@@ -74,6 +148,9 @@ class FGSP_Plugin
                 text-align: center;
                 display: block !important;
                 width: 100%;
+                height: auto !important;
+                padding: 10px !important;
+                font-weight: 700 !important;
             }
         </style>
         <?php
@@ -93,7 +170,11 @@ class FGSP_Plugin
 
     public function enqueue_assets($hook)
     {
-        if (strpos($hook, 'fgsp-generator') === false) {
+        global $post;
+        $is_generator_page = strpos($hook, 'fgsp-generator') !== false;
+        $is_sp_table_edit = ($hook === 'post.php' || $hook === 'post-new.php') && isset($post) && $post->post_type === 'sp_table';
+
+        if (!$is_generator_page && !$is_sp_table_edit) {
             return;
         }
 
@@ -180,7 +261,11 @@ class FGSP_Plugin
         $table_id = isset($_POST['table_id']) ? intval($_POST['table_id']) : 0;
         $algorithm = isset($_POST['algorithm']) ? sanitize_text_field($_POST['algorithm']) : 'round-robin';
         $start_date = isset($_POST['start_date']) ? sanitize_text_field($_POST['start_date']) : date('Y-m-d');
+        $start_time = isset($_POST['start_time']) ? sanitize_text_field($_POST['start_time']) : '18:00';
         $interval = isset($_POST['interval']) ? intval($_POST['interval']) : 7;
+        $balance_home = isset($_POST['balance_home']) ? (bool) $_POST['balance_home'] : false;
+
+        $dt_string = $start_date . ' ' . $start_time;
 
         error_log("FGSP: Starting generation - Tournament: $tournament_id, Table: $table_id, Algorithm: $algorithm");
 
@@ -213,10 +298,10 @@ class FGSP_Plugin
         error_log("FGSP: League: $league_id, Season: $season_id");
 
         $rounds = array();
-        if ($algorithm === 'round-robin' || $algorithm === 'single-round-robin') {
-            $rounds = $this->generate_round_robin_schedule($team_ids);
+        if (strpos($algorithm, 'round-robin') !== false) {
+            $rounds = $this->generate_round_robin_schedule($team_ids, $balance_home);
 
-            if ($algorithm === 'round-robin') {
+            if ($algorithm === 'round-robin' || $algorithm === 'reverse-round-robin') {
                 $second_half = array();
                 foreach ($rounds as $matches) {
                     $swapped = array();
@@ -225,9 +310,17 @@ class FGSP_Plugin
                     }
                     $second_half[] = $swapped;
                 }
-                $rounds = array_merge($rounds, $second_half);
+
+                if ($algorithm === 'reverse-round-robin') {
+                    $rounds = array_merge($second_half, $rounds);
+                } else {
+                    $rounds = array_merge($rounds, $second_half);
+                }
             }
+        } elseif ($algorithm === 'knockout') {
+            $rounds = $this->generate_knockout_schedule($team_ids);
         } else {
+            // Random
             shuffle($team_ids);
             $matches = array();
             for ($i = 0; $i < count($team_ids); $i += 2) {
@@ -241,7 +334,7 @@ class FGSP_Plugin
         error_log("FGSP: Generated " . count($rounds) . " rounds");
 
         $created_count = 0;
-        $current_timestamp = strtotime($start_date);
+        $current_timestamp = strtotime($dt_string);
 
         foreach ($rounds as $r_idx => $matches) {
             $round_num = $r_idx + 1;
@@ -283,7 +376,7 @@ class FGSP_Plugin
         wp_send_json_success(array('count' => $created_count));
     }
 
-    private function generate_round_robin_schedule($teams)
+    private function generate_round_robin_schedule($teams, $balance = true)
     {
         if (count($teams) % 2 != 0) {
             $teams[] = null; // bye
@@ -296,7 +389,12 @@ class FGSP_Plugin
                 $home = $teams[$i];
                 $away = $teams[$n - 1 - $i];
                 if ($home !== null && $away !== null) {
-                    $round_matches[] = array($home, $away);
+                    // Balancing home/away
+                    if ($balance && ($i === 0 ? ($r % 2 === 0) : (($i + $r) % 2 === 0))) {
+                        $round_matches[] = array($away, $home);
+                    } else {
+                        $round_matches[] = array($home, $away);
+                    }
                 }
             }
             $rounds[] = $round_matches;
@@ -306,6 +404,18 @@ class FGSP_Plugin
             array_splice($teams, 1, 0, array($last));
         }
         return $rounds;
+    }
+
+    private function generate_knockout_schedule($teams)
+    {
+        shuffle($teams);
+        $matches = array();
+        for ($i = 0; $i < count($teams); $i += 2) {
+            if (isset($teams[$i + 1])) {
+                $matches[] = array($teams[$i], $teams[$i + 1]);
+            }
+        }
+        return array($matches); // Simple single round for knockout for now
     }
 }
 

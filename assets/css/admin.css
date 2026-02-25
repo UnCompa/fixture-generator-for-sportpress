@@ -301,3 +301,85 @@ select:focus {
   color: #856404;
   border: 1px solid #ffeeba;
 }
+
+/* Modal Styles */
+.fgsp-modal {
+  position: fixed;
+  z-index: 999999;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+
+.fgsp-modal-content {
+  background-color: #fff;
+  width: 90%;
+  max-width: 500px;
+  border-radius: 12px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+  animation: fgsp-modal-fade 0.3s ease-out;
+}
+
+@keyframes fgsp-modal-fade {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fgsp-modal-header {
+  padding: 20px;
+  background: var(--fgsp-primary);
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.fgsp-modal-header h3 {
+  margin: 0;
+  color: white !important;
+  font-size: 1.2rem;
+}
+
+.fgsp-close-modal {
+  font-size: 28px;
+  font-weight: bold;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.fgsp-modal-body {
+  padding: 25px;
+}
+
+.fgsp-modal-body .fgsp-field label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 600;
+}
+
+.fgsp-modal-footer {
+  padding: 15px 25px;
+  background: #f9f9f9;
+  border-top: 1px solid #eee;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+#fgsp-modal-progress .fgsp-progress-bar {
+  height: 10px;
+  border-radius: 5px;
+}
