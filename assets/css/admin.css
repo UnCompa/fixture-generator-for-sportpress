@@ -1,0 +1,249 @@
+:root {
+  --fgsp-primary: #2ecc71;
+  --fgsp-primary-hover: #27ae60;
+  --fgsp-secondary: #3498db;
+  --fgsp-dark: #2c3e50;
+  --fgsp-light: #f8f9fa;
+  --fgsp-white: #ffffff;
+  --fgsp-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  --fgsp-radius: 12px;
+}
+
+.fgsp-admin-wrap {
+  margin: 20px 20px 0 0;
+  font-family:
+    "Inter",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    Oxygen-Sans,
+    Ubuntu,
+    Cantarell,
+    "Helvetica Neue",
+    sans-serif;
+}
+
+.fgsp-header {
+  margin-bottom: 30px;
+}
+
+.fgsp-header h1 {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: var(--fgsp-dark);
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin: 0;
+}
+
+.fgsp-header h1 .dashicons {
+  font-size: 2.5rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  color: var(--fgsp-primary);
+}
+
+.fgsp-main-card {
+  background: var(--fgsp-white);
+  border-radius: var(--fgsp-radius);
+  box-shadow: var(--fgsp-shadow);
+  padding: 30px;
+  margin-bottom: 30px;
+  transition: transform 0.3s ease;
+}
+
+.fgsp-card-header h2 {
+  font-size: 1.5rem;
+  margin-top: 0;
+  color: var(--fgsp-dark);
+}
+
+.fgsp-form-group {
+  margin-top: 20px;
+}
+
+.fgsp-form-group label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #555;
+}
+
+.fgsp-select-2 {
+  width: 100%;
+  max-width: 400px;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  font-size: 1rem;
+}
+
+.fgsp-groups-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 25px;
+  margin-bottom: 30px;
+}
+
+.fgsp-group-card {
+  background: var(--fgsp-white);
+  border-radius: var(--fgsp-radius);
+  box-shadow: var(--fgsp-shadow);
+  padding: 25px;
+  border-top: 4px solid var(--fgsp-primary);
+  animation: fadeInUp 0.5s ease forwards;
+}
+
+.fgsp-group-card.incomplete {
+  border-top-color: #e74c3c;
+}
+
+.fgsp-group-card.highlighted {
+  border-color: var(--fgsp-secondary);
+  box-shadow: 0 0 20px rgba(52, 152, 219, 0.3);
+  transform: scale(1.02);
+}
+
+.fgsp-group-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.fgsp-group-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.fgsp-team-count {
+  background: #eee;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.fgsp-team-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.fgsp-team-item {
+  padding: 10px 15px;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.fgsp-team-item:last-child {
+  border-bottom: none;
+}
+
+.fgsp-config-section {
+  background: #fdfdfd;
+  padding: 15px;
+  border-radius: 8px;
+  border: 1px dashed #ccc;
+}
+
+.fgsp-config-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  margin-bottom: 10px;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.fgsp-btn-premium {
+  background: var(--fgsp-primary) !important;
+  border: none !important;
+  box-shadow: 0 4px 15px rgba(46, 204, 113, 0.4) !important;
+  transition: all 0.3s ease !important;
+  color: white !important;
+  padding: 10px 25px !important;
+  height: auto !important;
+  font-size: 1.1rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.fgsp-btn-premium:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(46, 204, 113, 0.6) !important;
+}
+
+.fgsp-footer-actions {
+  display: flex;
+  justify-content: center;
+  padding: 40px 0;
+}
+
+/* Animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Loader */
+.fgsp-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(5px);
+  z-index: 9999;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.fgsp-spinner {
+  width: 60px;
+  height: 60px;
+  border: 5px solid #eee;
+  border-top: 5px solid var(--fgsp-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.fgsp-alert {
+  padding: 10px 15px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  font-size: 0.9rem;
+}
+
+.fgsp-alert-warning {
+  background: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeeba;
+}
