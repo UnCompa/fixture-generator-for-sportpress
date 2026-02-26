@@ -749,6 +749,13 @@ class FGSP_Plugin
 
         error_log("FGSP: League: $league_id, Season: $season_id");
 
+        // Pre-fetch all players for each team to avoid repeated queries in the loop
+        $players_by_team = array();
+        foreach ($team_ids as $team_id) {
+            $players_by_team[$team_id] = $this->get_team_players_ids($team_id);
+        }
+
+
         $rounds = array();
         if (strpos($algorithm, 'round-robin') !== false) {
             $rounds = $this->generate_round_robin_schedule($team_ids, $balance_home);
@@ -896,6 +903,26 @@ class FGSP_Plugin
                     update_post_meta($event_id, 'sp_table', $table_id);
                     update_post_meta($event_id, 'sp_day', $round_num);
                     update_post_meta($event_id, 'sp_format', 'league');
+                    update_post_meta($event_id, 'sp_mode', 'team');
+                    update_post_meta($event_id, 'sp_status', 'ok');
+
+
+                    // Include Players (Home vs Away structure)
+                    // Start Home Players
+                    add_post_meta($event_id, 'sp_player', 0);
+                    if (isset($players_by_team[$home_id])) {
+                        foreach ($players_by_team[$home_id] as $player_id) {
+                            add_post_meta($event_id, 'sp_player', $player_id);
+                        }
+                    }
+                    // Start Away Players
+                    add_post_meta($event_id, 'sp_player', 0);
+                    if (isset($players_by_team[$away_id])) {
+                        foreach ($players_by_team[$away_id] as $player_id) {
+                            add_post_meta($event_id, 'sp_player', $player_id);
+                        }
+                    }
+
 
                     // Assign Venue (Cancha)
                     if ($assign_venue_enabled) {
@@ -1121,7 +1148,19 @@ class FGSP_Plugin
             wp_delete_post($event_id, true); // Bypass trash
         }
     }
+
+    private function get_team_players_ids($team_id)
+    {
+        return get_posts(array(
+            'post_type' => 'sp_player',
+            'posts_per_page' => -1,
+            'meta_key' => 'sp_team',
+            'meta_value' => $team_id,
+            'fields' => 'ids',
+        ));
+    }
 }
+
 
 
 // Inicializar el plugin
