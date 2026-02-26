@@ -104,15 +104,29 @@ class FGSP_Plugin
         $team_ids = get_post_meta($post->ID, 'sp_teams', true);
         $count = is_array($team_ids) ? count(array_filter(array_keys($team_ids))) : 0;
         $tournament_id = get_post_meta($post->ID, 'sp_tournament', true);
+        $is_played = $this->is_group_played($post->ID);
+        $has_fixtures = !empty($this->get_existing_events($post->ID));
         ?>
         <div class="fgsp-meta-box-content">
             <p><strong><?php echo $count; ?></strong> <?php _e('teams detected.', 'fixture-generator-for-sportpress'); ?></p>
+
+            <?php if ($is_played): ?>
+                <div class="notice notice-error inline" style="margin-bottom: 10px; display: block;">
+                    <p><?php _e('Bloqueado: Este grupo ya tiene resultados.', 'fixture-generator-for-sportpress'); ?></p>
+                </div>
+            <?php elseif ($has_fixtures): ?>
+                <div class="notice notice-info inline" style="margin-bottom: 10px; display: block;">
+                    <p><?php _e('Ya hay un fixture. Se pedirá confirmación para regenerar.', 'fixture-generator-for-sportpress'); ?>
+                    </p>
+                </div>
+            <?php endif; ?>
+
             <?php if ($count < 2): ?>
                 <div class="notice notice-warning inline">
                     <p><?php _e('Need at least 2 teams.', 'fixture-generator-for-sportpress'); ?></p>
                 </div>
             <?php else: ?>
-                <button type="button" id="fgsp-open-modal" class="button button-primary fgsp-btn-premium-small">
+                <button type="button" id="fgsp-open-modal" class="button button-primary fgsp-btn-premium-small" <?php disabled($is_played); ?>>
                     <span class="dashicons dashicons-randomize"></span>
                     <?php _e('Generate Fixtures', 'fixture-generator-for-sportpress'); ?>
                 </button>
@@ -149,7 +163,7 @@ class FGSP_Plugin
                                 <option value="random"><?php _e('Random Matchmaking', 'fixture-generator-for-sportpress'); ?>
                                 </option>
                                 <option value="playoffs-single">
-                                            <?php _e('Playoffs - Single Elimination (Top 4/8)', 'fixture-generator-for-sportpress'); ?>
+                                    <?php _e('Playoffs - Single Elimination (Top 4/8)', 'fixture-generator-for-sportpress'); ?>
                                 </option>
                             </select>
                         </div>
@@ -581,7 +595,10 @@ class FGSP_Plugin
                 'id' => $group->ID,
                 'title' => $group->post_title,
                 'teams' => $teams,
+                'has_fixtures' => !empty($this->get_existing_events($group->ID)),
+                'is_played' => $this->is_group_played($group->ID)
             );
+
         }
 
         $leagues = get_the_terms($tournament_id, 'sp_league');
@@ -664,6 +681,32 @@ class FGSP_Plugin
         $round_prefix = isset($_POST['round_prefix']) ? sanitize_text_field($_POST['round_prefix']) : 'Jornada';
         $exclude_dates_str = isset($_POST['exclude_dates']) ? sanitize_text_field($_POST['exclude_dates']) : '';
         $shuffle_teams_enabled = isset($_POST['shuffle_teams']) ? (bool) $_POST['shuffle_teams'] : false;
+        $confirm_overwrite = isset($_POST['confirm_overwrite']) ? (bool) $_POST['confirm_overwrite'] : false;
+
+        if (!$tournament_id || !$table_id) {
+            wp_send_json_error('Missing parameters');
+        }
+
+        // Check for played matches (Block regeneration)
+        if ($this->is_group_played($table_id)) {
+            wp_send_json_error(__('Este grupo ya tiene partidos jugados. La regeneración de fixtures está bloqueada para este torneo/grupo.', 'fixture-generator-for-sportpress'));
+        }
+
+        // Check for existing fixtures (Confirmation required)
+        $existing_event_ids = $this->get_existing_events($table_id);
+        if (!empty($existing_event_ids) && !$confirm_overwrite) {
+            wp_send_json_success(array(
+                'status' => 'confirmation_required',
+                'message' => __('Ya existe un fixture generado para este grupo. Se eliminarán los partidos actuales y se volverán a generar. ¿Deseas continuar?', 'fixture-generator-for-sportpress')
+            ));
+        }
+
+
+        // If user confirmed, delete existing fixtures before starting
+        if ($confirm_overwrite) {
+            $this->delete_existing_fixtures($table_id);
+        }
+
 
         $exclude_dates = array();
         if (!empty($exclude_dates_str)) {
@@ -1028,7 +1071,58 @@ class FGSP_Plugin
         }
         return array($matches);
     }
+
+    private function get_existing_events($table_id)
+    {
+        return get_posts(array(
+            'post_type' => 'sp_event',
+            'post_status' => 'any',
+            'posts_per_page' => -1,
+            'meta_query' => array(
+                array(
+                    'key' => 'sp_table',
+                    'value' => $table_id,
+                ),
+            ),
+            'fields' => 'ids',
+        ));
+    }
+
+
+    private function is_group_played($table_id)
+    {
+        $events = $this->get_existing_events($table_id);
+        if (empty($events)) {
+            return false;
+        }
+
+        foreach ($events as $event_id) {
+            $results = get_post_meta($event_id, 'sp_results', true);
+            if (!empty($results) && is_array($results)) {
+                foreach ($results as $tid => $stats) {
+                    if ($tid == 0)
+                        continue;
+                    if (isset($stats['outcome']) && !empty($stats['outcome'])) {
+                        return true;
+                    }
+                    if (isset($stats['goals']) && $stats['goals'] !== '') {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    private function delete_existing_fixtures($table_id)
+    {
+        $events = $this->get_existing_events($table_id);
+        foreach ($events as $event_id) {
+            wp_delete_post($event_id, true); // Bypass trash
+        }
+    }
 }
+
 
 // Inicializar el plugin
 function init()

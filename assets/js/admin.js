@@ -78,6 +78,17 @@ jQuery(document).ready(function($) {
                         </div>
                     ` : ''}
 
+                    ${group.is_played ? `
+                        <div class="fgsp-alert fgsp-alert-error" style="background:#fde8e8; color:#9b1c1c; border-color:#f8b4b4; padding: 10px; border-radius: 4px; margin-bottom: 10px; border: 1px solid;">
+                            <span class="dashicons dashicons-lock"></span> Bloqueado: Este grupo ya tiene resultados.
+                        </div>
+                    ` : group.has_fixtures ? `
+                        <div class="fgsp-alert fgsp-alert-info" style="background:#e1effe; color:#1e429f; border-color:#bcdefa; padding: 10px; border-radius: 4px; margin-bottom: 10px; border: 1px solid;">
+                            <span class="dashicons dashicons-info"></span> Ya existen fixtures generados.
+                        </div>
+                    ` : ''}
+
+
                     <div class="fgsp-config-title">Linked Teams</div>
                     <ul class="fgsp-team-list">
                         ${group.teams.map(team => `
@@ -229,27 +240,44 @@ jQuery(document).ready(function($) {
 
             console.log(`FGSP: Generating fixtures for group ${tableId}...`);
             try {
-                const response = await $.ajax({
+                const requestData = {
+                    action: 'fgsp_generate_fixtures',
+                    tournament_id: tournamentId,
+                    table_id: tableId,
+                    algorithm: algorithm,
+                    start_date: startDate,
+                    start_time: startTime,
+                    interval: interval,
+                    balance_home: balanceHome,
+                    allowed_days: $card.find('.fgsp-day:checked').map(function() { return $(this).val(); }).get(),
+                    rotate_times: $card.find('.fgsp-rotate-times').val(),
+                    assign_venue: $card.find('.fgsp-assign-venue').is(':checked') ? 1 : 0,
+                    round_prefix: $card.find('.fgsp-round-prefix').val(),
+                    exclude_dates: $card.find('.fgsp-exclude-dates').val(),
+                    shuffle_teams: $card.find('.fgsp-shuffle-teams').is(':checked') ? 1 : 0,
+                    nonce: fgspData.nonce
+                };
+
+                let response = await $.ajax({
                     url: fgspData.ajaxUrl,
                     type: 'POST',
-                    data: {
-                        action: 'fgsp_generate_fixtures',
-                        tournament_id: tournamentId,
-                        table_id: tableId,
-                        algorithm: algorithm,
-                        start_date: startDate,
-                        start_time: startTime,
-                        interval: interval,
-                        balance_home: balanceHome,
-                        allowed_days: $card.find('.fgsp-day:checked').map(function() { return $(this).val(); }).get(),
-                        rotate_times: $card.find('.fgsp-rotate-times').val(),
-                        assign_venue: $card.find('.fgsp-assign-venue').is(':checked') ? 1 : 0,
-                        round_prefix: $card.find('.fgsp-round-prefix').val(),
-                        exclude_dates: $card.find('.fgsp-exclude-dates').val(),
-                        shuffle_teams: $card.find('.fgsp-shuffle-teams').is(':checked') ? 1 : 0,
-                        nonce: fgspData.nonce
-                    }
+                    data: requestData
                 });
+
+                // Handle Confirmation required
+                if (response.success && response.data.status === 'confirmation_required') {
+                    if (confirm(`Group "${$card.find('h3').text()}": ${response.data.message}`)) {
+                        requestData.confirm_overwrite = 1;
+                        response = await $.ajax({
+                            url: fgspData.ajaxUrl,
+                            type: 'POST',
+                            data: requestData
+                        });
+                    } else {
+                        console.log(`FGSP: Generation cancelled for group ${tableId}`);
+                        continue;
+                    }
+                }
 
                 if (response.success) {
                     completed++;
@@ -259,10 +287,12 @@ jQuery(document).ready(function($) {
                     $progressText.text(`${percent}% (${completed}/${totalGroups} groups completed)`);
                 } else {
                     console.error(`FGSP Error in group ${tableId}:`, response.data);
+                    alert(`Error en grupo "${$card.find('h3').text()}": ${response.data}`);
                 }
             } catch (err) {
                 console.error(`Request failed for group ${tableId}:`, err);
             }
+
         }
 
         $btn.prop('disabled', false).removeClass('updating');
@@ -322,27 +352,45 @@ jQuery(document).ready(function($) {
             $modalProgress.slideDown();
 
             try {
-                const response = await $.ajax({
+                const requestData = {
+                    action: 'fgsp_generate_fixtures',
+                    tournament_id: tournamentId,
+                    table_id: tableId,
+                    algorithm: algorithm,
+                    start_date: startDate,
+                    start_time: startTime,
+                    interval: interval,
+                    balance_home: $('#fgsp-modal-balance-home').is(':checked') ? 1 : 0,
+                    allowed_days: $('.fgsp-modal-day:checked').map(function() { return $(this).val(); }).get(),
+                    rotate_times: $('#fgsp-modal-rotate-times').val(),
+                    assign_venue: $('#fgsp-modal-assign-venue').is(':checked') ? 1 : 0,
+                    round_prefix: $('#fgsp-modal-round-prefix').val(),
+                    exclude_dates: $('#fgsp-modal-exclude-dates').val(),
+                    shuffle_teams: $('#fgsp-modal-shuffle-teams').is(':checked') ? 1 : 0,
+                    nonce: fgspData.nonce
+                };
+
+                let response = await $.ajax({
                     url: fgspData.ajaxUrl,
                     type: 'POST',
-                    data: {
-                        action: 'fgsp_generate_fixtures',
-                        tournament_id: tournamentId,
-                        table_id: tableId,
-                        algorithm: algorithm,
-                        start_date: startDate,
-                        start_time: startTime,
-                        interval: interval,
-                        balance_home: $('#fgsp-modal-balance-home').is(':checked') ? 1 : 0,
-                        allowed_days: $('.fgsp-modal-day:checked').map(function() { return $(this).val(); }).get(),
-                        rotate_times: $('#fgsp-modal-rotate-times').val(),
-                        assign_venue: $('#fgsp-modal-assign-venue').is(':checked') ? 1 : 0,
-                        round_prefix: $('#fgsp-modal-round-prefix').val(),
-                        exclude_dates: $('#fgsp-modal-exclude-dates').val(),
-                        shuffle_teams: $('#fgsp-modal-shuffle-teams').is(':checked') ? 1 : 0,
-                        nonce: fgspData.nonce
-                    }
+                    data: requestData
                 });
+
+                // Status Confirmation logic
+                if (response.success && response.data.status === 'confirmation_required') {
+                    if (confirm(response.data.message)) {
+                        requestData.confirm_overwrite = 1;
+                        response = await $.ajax({
+                            url: fgspData.ajaxUrl,
+                            type: 'POST',
+                            data: requestData
+                        });
+                    } else {
+                        $modalSubmit.prop('disabled', false).text('Generate Now');
+                        $modalProgress.slideUp();
+                        return;
+                    }
+                }
 
                 if (response.success) {
                     alert(`Success! Generated ${response.data.count} events.`);
@@ -354,6 +402,7 @@ jQuery(document).ready(function($) {
                 console.error('Modal Request Failed:', err);
                 alert('Request failed. Check console for details.');
             } finally {
+
                 $modalSubmit.prop('disabled', false).text('Generate Now');
             }
         });
