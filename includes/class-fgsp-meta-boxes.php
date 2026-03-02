@@ -117,6 +117,7 @@ class FGSP_Meta_Boxes
 
         $events = get_posts(array(
             'post_type' => 'sp_event',
+            'post_status' => 'any',
             'posts_per_page' => -1,
             'meta_query' => array(
                 array(
