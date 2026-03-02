@@ -46,6 +46,9 @@ class FGSP_Generator
             return new WP_Error('missing_params', 'Missing tournament or group ID');
         }
 
+        // Get tournament title for suffix if requested
+        $tournament_title = get_the_title($tournament_id);
+
         // Get teams
         $team_ids_meta = get_post_meta($table_id, 'sp_teams', true);
         if (!is_array($team_ids_meta)) {
@@ -188,7 +191,7 @@ class FGSP_Generator
                 $event_datetime = $current_date_base . ' ' . $this_match_time;
 
                 $event_id = wp_insert_post(array(
-                    'post_title' => get_the_title($home_id) . ' vs ' . get_the_title($away_id),
+                    'post_title' => get_the_title($home_id) . ' vs ' . get_the_title($away_id) . ' (' . $tournament_title . ')',
                     'post_type' => 'sp_event',
                     'post_status' => 'future',
                     'post_date' => $event_datetime,
@@ -225,6 +228,13 @@ class FGSP_Generator
      */
     public function create_group($tournament_id, $group_name, $team_ids)
     {
+        $tournament_title = get_the_title($tournament_id);
+
+        // Ensure we don't double suffix if name already contains it
+        if (strpos($group_name, "($tournament_title)") === false) {
+            $group_name .= ' (' . $tournament_title . ')';
+        }
+
         $table_id = wp_insert_post(array(
             'post_title' => $group_name,
             'post_type' => 'sp_table',
@@ -306,6 +316,8 @@ class FGSP_Generator
         $format = intval($params['format']);
         $legs = intval($params['legs']);
 
+        $tournament_title = get_the_title($tournament_id);
+
         $leagues = get_the_terms($tournament_id, 'sp_league');
         $seasons = get_the_terms($tournament_id, 'sp_season');
         $league_id = ($leagues && !is_wp_error($leagues)) ? $leagues[0]->term_id : 0;
@@ -340,7 +352,7 @@ class FGSP_Generator
                 $last_event_id = 0;
                 foreach ($titles as $title) {
                     $event_id = wp_insert_post(array(
-                        'post_title' => $title,
+                        'post_title' => $title . ' (' . $tournament_title . ')',
                         'post_type' => 'sp_event',
                         'post_status' => 'future'
                     ));
