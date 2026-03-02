@@ -567,9 +567,23 @@ select:focus {
 }
 
 .fgsp-close-promotion-modal,
-.fgsp-close-event-modal {
+.fgsp-close-event-modal,
+.fgsp-close-playoff-modal {
   font-size: 28px;
   font-weight: bold;
   cursor: pointer;
   line-height: 1;
+}
+
+#fgsp-playoff-modal .fgsp-field label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 600;
+  color: #444;
+}
+
+#fgsp-playoff-modal select {
+  padding: 8px;
+  border-radius: 4px;
+  border: 1px solid #ddd;
 }

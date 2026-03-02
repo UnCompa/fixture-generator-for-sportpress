@@ -300,6 +300,68 @@ class FGSP_Generator
         }
     }
 
+    public function generate_playoffs($params)
+    {
+        $tournament_id = intval($params['tournament_id']);
+        $format = intval($params['format']);
+        $legs = intval($params['legs']);
+
+        $leagues = get_the_terms($tournament_id, 'sp_league');
+        $seasons = get_the_terms($tournament_id, 'sp_season');
+        $league_id = ($leagues && !is_wp_error($leagues)) ? $leagues[0]->term_id : 0;
+        $season_id = ($seasons && !is_wp_error($seasons)) ? $seasons[0]->term_id : 0;
+
+        $created_count = 0;
+
+        // Define rounds based on format
+        $rounds = array();
+        if ($format >= 16)
+            $rounds[] = array('title' => 'Octavos de Final', 'matches' => 8);
+        if ($format >= 8)
+            $rounds[] = array('title' => 'Cuartos de Final', 'matches' => 4);
+        if ($format >= 4)
+            $rounds[] = array('title' => 'Semifinal', 'matches' => 2);
+
+        $rounds[] = array('title' => 'Gran Final', 'matches' => 1);
+
+        foreach ($rounds as $round) {
+            for ($i = 1; $i <= $round['matches']; $i++) {
+                $titles = array();
+                $suffix = ($round['matches'] > 1) ? " " . $i : "";
+
+                if ($legs == 2 && $round['title'] !== 'Gran Final') {
+                    $titles[] = $round['title'] . $suffix . " (Ida)";
+                    $titles[] = $round['title'] . $suffix . " (Vuelta)";
+                } else {
+                    $titles[] = $round['title'] . $suffix;
+                }
+
+                foreach ($titles as $title) {
+                    $event_id = wp_insert_post(array(
+                        'post_title' => $title,
+                        'post_type' => 'sp_event',
+                        'post_status' => 'future'
+                    ));
+
+                    if ($event_id) {
+                        update_post_meta($event_id, 'sp_tournament', $tournament_id);
+                        update_post_meta($event_id, 'sp_format', 'league');
+                        update_post_meta($event_id, 'sp_mode', 'team');
+
+                        if ($league_id)
+                            wp_set_object_terms($event_id, intval($league_id), 'sp_league');
+                        if ($season_id)
+                            wp_set_object_terms($event_id, intval($season_id), 'sp_season');
+
+                        $created_count++;
+                    }
+                }
+            }
+        }
+
+        return array('count' => $created_count, 'message' => sprintf('Se han generado %d eventos para las eliminatorias del torneo.', $created_count));
+    }
+
     protected function log_generation($table_id, $tournament_id, $algorithm, $count, $ids)
     {
         global $wpdb;

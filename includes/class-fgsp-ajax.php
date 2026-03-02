@@ -351,6 +351,7 @@ class FGSP_Ajax
         check_ajax_referer('fgsp_nonce', 'nonce');
 
         $table_id = isset($_POST['table_id']) ? intval($_POST['table_id']) : 0;
+
         if (!$table_id || !$this->promotion) {
             wp_send_json_error('Invalid table ID or Promotion class missing');
         }
@@ -373,5 +374,31 @@ class FGSP_Ajax
 
         $count = $this->promotion->promote_to_events($promotions);
         wp_send_json_success(array('message' => sprintf('Se han promovido equipos a %d eventos.', $count)));
+    }
+
+    /**
+     * Generate playoff events.
+     */
+    public function generate_playoffs()
+    {
+        check_ajax_referer('fgsp_nonce', 'nonce');
+
+        $params = array(
+            'tournament_id' => isset($_POST['tournament_id']) ? intval($_POST['tournament_id']) : 0,
+            'format' => isset($_POST['format']) ? intval($_POST['format']) : 4,
+            'legs' => isset($_POST['legs']) ? intval($_POST['legs']) : 1,
+        );
+
+        if (!$params['tournament_id']) {
+            wp_send_json_error('Invalid tournament ID');
+        }
+
+        $result = $this->generator->generate_playoffs($params);
+
+        if (is_wp_error($result)) {
+            wp_send_json_error($result->get_error_message());
+        }
+
+        wp_send_json_success($result);
     }
 }

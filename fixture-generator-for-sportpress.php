@@ -66,6 +66,7 @@ class FGSP_Plugin
         require_once $path . 'class-fgsp-admin.php';
         require_once $path . 'class-fgsp-meta-boxes.php';
         require_once $path . 'class-fgsp-ajax.php';
+        require_once $path . 'class-fgsp-promotion.php';
     }
 
     /**
@@ -103,6 +104,7 @@ class FGSP_Plugin
             'save_quick_results',
             'get_group_standings',
             'submit_promotions',
+            'generate_playoffs',
         );
 
         foreach ($handlers as $handler) {

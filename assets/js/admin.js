@@ -850,4 +850,65 @@ jQuery(document).ready(function($) {
         }
     });
 
+    /**
+     * Playoff Generator Logic
+     */
+    const $playoffModal = $('#fgsp-playoff-modal');
+    
+    $('#fgsp-open-playoff-modal').on('click', function() {
+        $playoffModal.fadeIn(300).css('display', 'flex');
+    });
+
+    $('.fgsp-close-playoff-modal').on('click', function() {
+        $playoffModal.fadeOut(200);
+    });
+
+    $('#fgsp-generate-playoffs-btn').on('click', function() {
+        const $btn = $(this);
+        const tournamentId = $selector.val();
+        
+        if (!tournamentId) {
+            alert('Please select a tournament first.');
+            return;
+        }
+
+        const format = $('#fgsp-playoff-format').val();
+        const legs = $('#fgsp-playoff-legs').val();
+
+        if (!confirm('This will create new knockout events for your tournament. Continue?')) {
+            return;
+        }
+
+        $btn.prop('disabled', true).text('Generating...');
+        $loader.fadeIn();
+
+        $.ajax({
+            url: fgspData.ajaxUrl,
+            type: 'POST',
+            data: {
+                action: 'fgsp_generate_playoffs',
+                tournament_id: tournamentId,
+                format: format,
+                legs: legs,
+                nonce: fgspData.nonce
+            },
+            success: function(response) {
+                if (response.success) {
+                    alert(response.data.message);
+                    $playoffModal.fadeOut(200);
+                    loadGroups(tournamentId); // Refresh UI
+                } else {
+                    alert('Error: ' + response.data);
+                }
+            },
+            error: function() {
+                alert('Connection error');
+            },
+            complete: function() {
+                $btn.prop('disabled', false).text('Create Events');
+                $loader.fadeOut();
+            }
+        });
+    });
+
 });
