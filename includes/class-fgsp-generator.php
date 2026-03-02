@@ -312,19 +312,20 @@ class FGSP_Generator
         $season_id = ($seasons && !is_wp_error($seasons)) ? $seasons[0]->term_id : 0;
 
         $created_count = 0;
+        $bracket_event_ids = array();
 
         // Define rounds based on format
-        $rounds = array();
+        $rounds_definitions = array();
         if ($format >= 16)
-            $rounds[] = array('title' => 'Octavos de Final', 'matches' => 8);
+            $rounds_definitions[] = array('title' => 'Octavos de Final', 'matches' => 8);
         if ($format >= 8)
-            $rounds[] = array('title' => 'Cuartos de Final', 'matches' => 4);
+            $rounds_definitions[] = array('title' => 'Cuartos de Final', 'matches' => 4);
         if ($format >= 4)
-            $rounds[] = array('title' => 'Semifinal', 'matches' => 2);
+            $rounds_definitions[] = array('title' => 'Semifinal', 'matches' => 2);
 
-        $rounds[] = array('title' => 'Gran Final', 'matches' => 1);
+        $rounds_definitions[] = array('title' => 'Gran Final', 'matches' => 1);
 
-        foreach ($rounds as $round) {
+        foreach ($rounds_definitions as $round) {
             for ($i = 1; $i <= $round['matches']; $i++) {
                 $titles = array();
                 $suffix = ($round['matches'] > 1) ? " " . $i : "";
@@ -336,6 +337,7 @@ class FGSP_Generator
                     $titles[] = $round['title'] . $suffix;
                 }
 
+                $last_event_id = 0;
                 foreach ($titles as $title) {
                     $event_id = wp_insert_post(array(
                         'post_title' => $title,
@@ -354,12 +356,47 @@ class FGSP_Generator
                             wp_set_object_terms($event_id, intval($season_id), 'sp_season');
 
                         $created_count++;
+                        $last_event_id = $event_id;
                     }
                 }
+                // We add the last event of the pair (the "Vuelta" or the single leg) to the bracket slot
+                $bracket_event_ids[] = $last_event_id;
             }
         }
 
-        return array('count' => $created_count, 'message' => sprintf('Se han generado %d eventos para las eliminatorias del torneo.', $created_count));
+        // Integration with SportsPress Integrated Bracket
+        $tournament_format = get_post_meta($tournament_id, 'sp_format', true);
+        if ($tournament_format === 'bracket') {
+            $num_rounds = count($rounds_definitions);
+            update_post_meta($tournament_id, 'sp_rounds', $num_rounds);
+
+            // Re-order labels
+            $labels = array();
+            foreach ($rounds_definitions as $rd) {
+                $labels[] = $rd['title'];
+            }
+            update_post_meta($tournament_id, 'sp_labels', $labels);
+
+            // Construct sp_events meta (serialized array of slots)
+            $sp_events_array = array();
+            foreach ($bracket_event_ids as $idx => $eid) {
+                $sp_events_array[$idx] = array(
+                    'teams' => array('0', '0'),
+                    'id' => (string) $eid,
+                    'hidden' => '0',
+                    'date' => ''
+                );
+            }
+            update_post_meta($tournament_id, 'sp_events', $sp_events_array);
+
+            // Update individual sp_event meta keys (SportsPress uses multiple keys with the same name)
+            delete_post_meta($tournament_id, 'sp_event');
+            foreach ($bracket_event_ids as $eid) {
+                add_post_meta($tournament_id, 'sp_event', $eid);
+            }
+        }
+
+        return array('count' => $created_count, 'message' => sprintf('Se han generado %d eventos para las eliminatorias del torneo y se ha configurado el Bracket.', $created_count));
     }
 
     protected function log_generation($table_id, $tournament_id, $algorithm, $count, $ids)

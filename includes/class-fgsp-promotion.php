@@ -76,14 +76,38 @@ class FGSP_Promotion
         foreach ($promotions as $event_id => $teams) {
             $event_id = intval($event_id);
 
-            // Clear existing teams first to be safe
+            // 1. Update the Event post metadata
             delete_post_meta($event_id, 'sp_team');
+            $home_team = isset($teams['home']) ? intval($teams['home']) : 0;
+            $away_team = isset($teams['away']) ? intval($teams['away']) : 0;
 
-            if (isset($teams['home']) && $teams['home']) {
-                add_post_meta($event_id, 'sp_team', intval($teams['home']));
+            if ($home_team) {
+                add_post_meta($event_id, 'sp_team', $home_team);
             }
-            if (isset($teams['away']) && $teams['away']) {
-                add_post_meta($event_id, 'sp_team', intval($teams['away']));
+            if ($away_team) {
+                add_post_meta($event_id, 'sp_team', $away_team);
+            }
+
+            // 2. Sync with SportsPress Integrated Bracket (Tournament Metadata)
+            $tournament_id = get_post_meta($event_id, 'sp_tournament', true);
+            if ($tournament_id) {
+                $bracket_data = get_post_meta($tournament_id, 'sp_events', true);
+                if (is_array($bracket_data)) {
+                    $synced = false;
+                    foreach ($bracket_data as &$slot) {
+                        // In SP, slot['id'] is stored as string
+                        if (isset($slot['id']) && (int) $slot['id'] === $event_id) {
+                            $slot['teams'] = array(
+                                $home_team ? (string) $home_team : '0',
+                                $away_team ? (string) $away_team : '0'
+                            );
+                            $synced = true;
+                        }
+                    }
+                    if ($synced) {
+                        update_post_meta($tournament_id, 'sp_events', $bracket_data);
+                    }
+                }
             }
 
             $count++;
