@@ -15,11 +15,19 @@ class FGSP_Ajax
     protected $generator;
 
     /**
+     * @var FGSP_Promotion
+     */
+    protected $promotion;
+
+    /**
      * Constructor.
      */
     public function __construct($generator)
     {
         $this->generator = $generator;
+        if (class_exists('FGSP_Promotion')) {
+            $this->promotion = new FGSP_Promotion();
+        }
     }
 
     /**
@@ -69,10 +77,43 @@ class FGSP_Ajax
             );
         }
 
+        // Get Knockout Events for this tournament (events not linked to a table)
+        // Actually SportsPress might link bracket events to the tournament but not a table
+        $knockout_events = get_posts(array(
+            'post_type' => 'sp_event',
+            'posts_per_page' => -1,
+            'meta_query' => array(
+                'relation' => 'AND',
+                array(
+                    'key' => 'sp_tournament',
+                    'value' => $tournament_id,
+                ),
+                array(
+                    'key' => 'sp_table',
+                    'compare' => 'NOT EXISTS' // Usually bracket events don't belong to a group table
+                )
+            )
+        ));
+
+        $ko_response = array();
+        foreach ($knockout_events as $event) {
+            $teams = get_post_meta($event->ID, 'sp_team', false);
+            $ko_response[] = array(
+                'id' => $event->ID,
+                'title' => $event->post_title,
+                'home_id' => isset($teams[0]) ? $teams[0] : 0,
+                'away_id' => isset($teams[1]) ? $teams[1] : 0
+            );
+        }
+
         $leagues = get_the_terms($tournament_id, 'sp_league');
         $league_ids = ($leagues && !is_wp_error($leagues)) ? wp_list_pluck($leagues, 'term_id') : array();
 
-        wp_send_json_success(array('groups' => $response, 'leagues' => $league_ids));
+        wp_send_json_success(array(
+            'groups' => $response,
+            'leagues' => $league_ids,
+            'knockout_events' => $ko_response
+        ));
     }
 
     /**
@@ -196,7 +237,7 @@ class FGSP_Ajax
     }
 
     /**
-     * Get existing events for a group to display in modal.
+     * Get existing events for a group to display in modal with results.
      */
     public function get_group_events()
     {
@@ -215,15 +256,122 @@ class FGSP_Ajax
             if (!$event)
                 continue;
 
+            $teams = get_post_meta($event->ID, 'sp_team', false);
+            $results = FGSP_Helpers::get_event_results($event->ID);
+
+            $home_id = isset($teams[0]) ? $teams[0] : 0;
+            $away_id = isset($teams[1]) ? $teams[1] : 0;
+
             $response[] = array(
                 'id' => $event->ID,
                 'title' => $event->post_title,
                 'date' => get_the_time(get_option('date_format') . ' ' . get_option('time_format'), $event),
                 'status' => $event->post_status,
-                'edit_link' => get_edit_post_link($event->ID)
+                'edit_link' => get_edit_post_link($event->ID),
+                'home_id' => $home_id,
+                'away_id' => $away_id,
+                'home_name' => $home_id ? get_the_title($home_id) : '-',
+                'away_name' => $away_id ? get_the_title($away_id) : '-',
+                'home_goals' => (isset($results[$home_id]) && isset($results[$home_id]['goals'])) ? $results[$home_id]['goals'] : '',
+                'away_goals' => (isset($results[$away_id]) && isset($results[$away_id]['goals'])) ? $results[$away_id]['goals'] : '',
             );
         }
 
         wp_send_json_success($response);
+    }
+
+    /**
+     * Save quick results from the modal.
+     */
+    public function save_quick_results()
+    {
+        check_ajax_referer('fgsp_nonce', 'nonce');
+
+        $results_data = isset($_POST['results']) ? $_POST['results'] : array();
+        if (empty($results_data)) {
+            wp_send_json_error('No data to save');
+        }
+
+        $count = 0;
+        foreach ($results_data as $event_id => $scores) {
+            $event_id = intval($event_id);
+
+            $teams = get_post_meta($event_id, 'sp_team', false);
+            if (count($teams) < 2)
+                continue;
+
+            $home_id = $teams[0];
+            $away_id = $teams[1];
+
+            $home_goals = isset($scores['home']) ? $scores['home'] : '';
+            $away_goals = isset($scores['away']) ? $scores['away'] : '';
+
+            // If both are empty, we might not want to save a result, but if one is set, we do.
+            if ($home_goals === '' && $away_goals === '')
+                continue;
+
+            // Determine outcome
+            $outcome = array();
+            if ($home_goals !== '' && $away_goals !== '') {
+                $h = intval($home_goals);
+                $a = intval($away_goals);
+                if ($h > $a) {
+                    $outcome = array($home_id => array('win'), $away_id => array('loss'));
+                } elseif ($h < $a) {
+                    $outcome = array($home_id => array('loss'), $away_id => array('win'));
+                } else {
+                    $outcome = array($home_id => array('draw'), $away_id => array('draw'));
+                }
+            }
+
+            $sp_results = array(
+                $home_id => array('goals' => $home_goals, 'outcome' => isset($outcome[$home_id]) ? $outcome[$home_id] : array()),
+                $away_id => array('goals' => $away_goals, 'outcome' => isset($outcome[$away_id]) ? $outcome[$away_id] : array())
+            );
+
+            update_post_meta($event_id, 'sp_results', $sp_results);
+
+            // Mark as publish if results are entered
+            wp_update_post(array(
+                'ID' => $event_id,
+                'post_status' => 'publish'
+            ));
+
+            $count++;
+        }
+
+        wp_send_json_success(array('message' => sprintf('Se han guardado %d partidos con éxito.', $count)));
+    }
+
+    /**
+     * Get standings for a group.
+     */
+    public function get_group_standings()
+    {
+        check_ajax_referer('fgsp_nonce', 'nonce');
+
+        $table_id = isset($_POST['table_id']) ? intval($_POST['table_id']) : 0;
+        if (!$table_id || !$this->promotion) {
+            wp_send_json_error('Invalid table ID or Promotion class missing');
+        }
+
+        $standings = $this->promotion->get_standings($table_id);
+        wp_send_json_success($standings);
+    }
+
+    /**
+     * Submit promotions to events.
+     */
+    public function submit_promotions()
+    {
+        check_ajax_referer('fgsp_nonce', 'nonce');
+
+        $promotions = isset($_POST['promotions']) ? $_POST['promotions'] : array();
+        if (empty($promotions) || !$this->promotion) {
+            wp_send_json_error('No promotions data provided');
+        }
+
+        $count = $this->promotion->promote_to_events($promotions);
+        wp_send_json_success(array('message' => sprintf('Se han promovido equipos a %d eventos.', $count)));
     }
 }

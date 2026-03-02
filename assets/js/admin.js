@@ -3,6 +3,8 @@ jQuery(document).ready(function($) {
     const $groupsContainer = $('#fgsp-groups-container');
     const $loader = $('#fgsp-loader');
     const $actions = $('#fgsp-global-actions');
+    
+    let currentKnockoutEvents = [];
 
     $selector.on('change', function() {
         const tournamentId = $(this).val();
@@ -35,6 +37,7 @@ jQuery(document).ready(function($) {
             },
             success: function(response) {
                 if (response.success) {
+                    currentKnockoutEvents = response.data.knockout_events || [];
                     renderGroups(response.data, preselectedTable);
                 } else {
                     alert('Error: ' + response.data);
@@ -70,8 +73,11 @@ jQuery(document).ready(function($) {
                         <h3><a href="post.php?post=${group.id}&action=edit" title="Edit League Table">${group.title}</a></h3>
                         <div class="fgsp-group-actions">
                             ${group.has_fixtures ? `
-                                <button type="button" class="fgsp-btn-icon fgsp-view-events" data-table-id="${group.id}" title="View Generated Events">
+                                <button type="button" class="fgsp-btn-icon fgsp-view-events" data-table-id="${group.id}" title="View & Edit Results">
                                     <span class="dashicons dashicons-soccer"></span>
+                                </button>
+                                <button type="button" class="fgsp-btn-icon fgsp-promote-btn" data-table-id="${group.id}" title="Promote to Playoffs">
+                                    <span class="dashicons dashicons-external"></span>
                                 </button>
                             ` : ''}
                             <span class="fgsp-team-count">${teamCount} Teams</span>
@@ -275,15 +281,17 @@ jQuery(document).ready(function($) {
     }
 
     /**
-     * View Events Modal Logic
+     * View Events & Edit Results Modal Logic
      */
     const $eventModal = $('#fgsp-event-viewer-modal');
     const $eventContainer = $('#fgsp-event-list-container');
+    const $saveResultsBtn = $('#fgsp-save-results-btn');
 
     $(document).on('click', '.fgsp-view-events', function() {
         const tableId = $(this).data('table-id');
-        $eventContainer.html('<p class="text-center"><span class="dashicons dashicons-update spin"></span> Loading events...</p>');
+        $eventContainer.html('<p class="text-center"><span class="dashicons dashicons-update spin"></span> Loading events & results...</p>');
         $eventModal.fadeIn(300).css('display', 'flex');
+        $saveResultsBtn.hide();
 
         $.ajax({
             url: fgspData.ajaxUrl,
@@ -298,22 +306,92 @@ jQuery(document).ready(function($) {
                     if (response.data.length === 0) {
                         $eventContainer.html('<p>No events found.</p>');
                     } else {
-                        let html = '<table class="fgsp-event-table"><thead><tr><th>Event</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
+                        let html = `
+                            <table class="fgsp-event-table">
+                                <thead>
+                                    <tr>
+                                        <th>Event Name</th>
+                                        <th style="text-align:center;">Home</th>
+                                        <th style="text-align:center;">Score</th>
+                                        <th style="text-align:center;">Away</th>
+                                        <th>Date</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>`;
+                        
                         response.data.forEach(event => {
                             html += `
-                                <tr>
-                                    <td><strong>${event.title}</strong></td>
-                                    <td>${event.date}</td>
-                                    <td><span class="status-${event.status}">${event.status}</span></td>
-                                    <td><a href="${event.edit_link}" class="button button-small" target="_blank">Edit</a></td>
+                                <tr class="fgsp-result-row" data-event-id="${event.id}">
+                                    <td><small>${event.title}</small></td>
+                                    <td style="text-align:right;"><strong>${event.home_name}</strong></td>
+                                    <td style="text-align:center; min-width:100px;">
+                                        <input type="number" class="fgsp-score-home" value="${event.home_goals}" style="width:40px; text-align:center; padding:2px;"> 
+                                        - 
+                                        <input type="number" class="fgsp-score-away" value="${event.away_goals}" style="width:40px; text-align:center; padding:2px;">
+                                    </td>
+                                    <td><strong>${event.away_name}</strong></td>
+                                    <td><small>${event.date}</small></td>
+                                    <td><a href="${event.edit_link}" class="button button-small" target="_blank"><span class="dashicons dashicons-edit"></span></a></td>
                                 </tr>`;
                         });
                         html += '</tbody></table>';
                         $eventContainer.html(html);
+                        $saveResultsBtn.show();
                     }
                 } else {
                     $eventContainer.html('<p>Error: ' + response.data + '</p>');
                 }
+            }
+        });
+    });
+
+    $saveResultsBtn.on('click', function() {
+        const $btn = $(this);
+        const results = {};
+        
+        $('.fgsp-result-row').each(function() {
+            const $row = $(this);
+            const id = $row.data('event-id');
+            const home = $row.find('.fgsp-score-home').val();
+            const away = $row.find('.fgsp-score-away').val();
+            
+            if (home !== '' || away !== '') {
+                results[id] = { home: home, away: away };
+            }
+        });
+
+        if (Object.keys(results).length === 0) {
+            alert('No se han ingresado marcadores nuevos.');
+            return;
+        }
+
+        $btn.prop('disabled', true).text('Guardando...');
+
+        $.ajax({
+            url: fgspData.ajaxUrl,
+            type: 'POST',
+            data: {
+                action: 'fgsp_save_quick_results',
+                results: results,
+                nonce: fgspData.nonce
+            },
+            success: function(response) {
+                if (response.success) {
+                    alert(response.data.message);
+                    $eventModal.fadeOut(200);
+                    // Refresh groups to toggle locks if needed
+                    const tournamentId = $selector.val();
+                    loadGroups(tournamentId);
+                } else {
+                    alert('Error: ' + response.data);
+                }
+            },
+            error: function() {
+                alert('Connection error');
+            },
+            complete: function() {
+                $btn.prop('disabled', false).text('Guardar Resultados');
             }
         });
     });
@@ -323,7 +401,128 @@ jQuery(document).ready(function($) {
     });
 
     /**
-     * Bulk Generation Global Action
+     * Promotion Logic
+     */
+    const $promotionModal = $('#fgsp-promotion-modal');
+    const $promotionContent = $('#fgsp-promotion-content');
+    const $submitPromotionBtn = $('#fgsp-submit-promotion-btn');
+
+    $(document).on('click', '.fgsp-promote-btn', function() {
+        const tableId = $(this).data('table-id');
+        $promotionContent.html('<p class="text-center"><span class="dashicons dashicons-update spin"></span> Fetching standings...</p>');
+        $promotionModal.fadeIn(300).css('display', 'flex');
+        $submitPromotionBtn.hide();
+
+        $.ajax({
+            url: fgspData.ajaxUrl,
+            type: 'POST',
+            data: {
+                action: 'fgsp_get_group_standings',
+                table_id: tableId,
+                nonce: fgspData.nonce
+            },
+            success: function(response) {
+                if (response.success) {
+                    const standings = response.data;
+                    if (standings.length === 0) {
+                        $promotionContent.html('<p>No teams found in this group.</p>');
+                    } else {
+                        let html = `
+                            <div style="margin-bottom:20px;">
+                                <p>Asigne los equipos mejor clasificados a los eventos de eliminatoria correspondientes.</p>
+                                <table class="wp-list-table widefat fixed striped">
+                                    <thead>
+                                        <tr>
+                                            <th width="50">Pos</th>
+                                            <th>Team</th>
+                                            <th>Points</th>
+                                            <th>Promote To</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>`;
+                        
+                        standings.forEach(team => {
+                            html += `
+                                <tr class="fgsp-promotion-row" data-team-id="${team.id}">
+                                    <td><strong>${team.pos}</strong></td>
+                                    <td>${team.name}</td>
+                                    <td>${team.pts} pts (${team.p} PJ)</td>
+                                    <td>
+                                        <select class="fgsp-promo-event" style="width:70%;">
+                                            <option value="">-- No promover --</option>
+                                            ${currentKnockoutEvents.map(event => `
+                                                <option value="${event.id}">[Event] ${event.title}</option>
+                                            `).join('')}
+                                        </select>
+                                        <select class="fgsp-promo-side" style="width:25%;">
+                                            <option value="home">Local</option>
+                                            <option value="away">Visita</option>
+                                        </select>
+                                    </td>
+                                </tr>`;
+                        });
+                        html += '</tbody></table></div>';
+                        $promotionContent.html(html);
+                        $submitPromotionBtn.show();
+                    }
+                } else {
+                    $promotionContent.html('<p>Error: ' + response.data + '</p>');
+                }
+            }
+        });
+    });
+
+    $submitPromotionBtn.on('click', function() {
+        const $btn = $(this);
+        const promotions = {}; // event_id => {home: id, away: id}
+        
+        $('.fgsp-promotion-row').each(function() {
+            const $row = $(this);
+            const teamId = $row.data('team-id');
+            const eventId = $row.find('.fgsp-promo-event').val();
+            const side = $row.find('.fgsp-promo-side').val();
+            
+            if (eventId) {
+                if (!promotions[eventId]) promotions[eventId] = {};
+                promotions[eventId][side] = teamId;
+            }
+        });
+
+        if (Object.keys(promotions).length === 0) {
+            alert('Por favor seleccione al menos un evento de destino.');
+            return;
+        }
+
+        $btn.prop('disabled', true).text('Promoviendo...');
+
+        $.ajax({
+            url: fgspData.ajaxUrl,
+            type: 'POST',
+            data: {
+                action: 'fgsp_submit_promotions',
+                promotions: promotions,
+                nonce: fgspData.nonce
+            },
+            success: function(response) {
+                if (response.success) {
+                    alert(response.data.message);
+                    $promotionModal.fadeOut(200);
+                } else {
+                    alert('Error: ' + response.data);
+                }
+            },
+            complete: function() {
+                $btn.prop('disabled', false).text('Confirmar Promoción');
+            }
+        });
+    });
+
+    $('.fgsp-close-promotion-modal').on('click', function() {
+        $promotionModal.fadeOut(200);
+    });
+
+    /**
+     * Bulk Generation Global Action (already added above)
      */
     $(document).on('click', '#fgsp-generate-all', async function() {
         const $btn = $(this);
@@ -378,7 +577,6 @@ jQuery(document).ready(function($) {
                 };
 
                 // Check for existing fixtures individually to avoid stopping the whole process
-                // For simplicity in "Generate All", we assume confirmation if they have fixtures but are NOT locked
                 requestData.confirm_overwrite = $card.find('.fgsp-alert-info').length > 0 ? 1 : 0;
 
                 const response = await $.ajax({
@@ -434,7 +632,7 @@ jQuery(document).ready(function($) {
             if ($icon.hasClass('dashicons-arrow-down-alt2')) {
                 $icon.removeClass('dashicons-arrow-down-alt2').addClass('dashicons-arrow-up-alt2');
             } else {
-                $icon.removeClass('dashicons-arrow-up-alt2').addClass('dashicons-arrow-down-alt2');
+                $icon.removeClass('dashicons-arrow-down-alt2').addClass('dashicons-arrow-up-alt2');
             }
         });
 

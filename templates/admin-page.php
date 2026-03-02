@@ -107,8 +107,31 @@
                 </div>
             </div>
             <div class="fgsp-modal-footer">
+                <button type="button" id="fgsp-save-results-btn" class="button button-primary"
+                    style="display:none;"><?php _e('Save Results', 'fixture-generator-for-sportpress'); ?></button>
                 <button type="button"
                     class="button fgsp-close-event-modal"><?php _e('Close', 'fixture-generator-for-sportpress'); ?></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Promotion Modal -->
+    <div id="fgsp-promotion-modal" class="fgsp-modal" style="display:none;">
+        <div class="fgsp-modal-content" style="max-width: 800px;">
+            <div class="fgsp-modal-header">
+                <h3><?php _e('Promote Teams to Playoffs', 'fixture-generator-for-sportpress'); ?></h3>
+                <span class="fgsp-close-promotion-modal">&times;</span>
+            </div>
+            <div class="fgsp-modal-body">
+                <div id="fgsp-promotion-content">
+                    <p><?php _e('Select a group to see standings and promote teams.', 'fixture-generator-for-sportpress'); ?></p>
+                </div>
+            </div>
+            <div class="fgsp-modal-footer">
+                <button type="button" id="fgsp-submit-promotion-btn" class="button button-primary"
+                    style="display:none;"><?php _e('Confirm Promotion', 'fixture-generator-for-sportpress'); ?></button>
+                <button type="button"
+                    class="button fgsp-close-promotion-modal"><?php _e('Cancel', 'fixture-generator-for-sportpress'); ?></button>
             </div>
         </div>
     </div>

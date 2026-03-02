@@ -91,4 +91,16 @@ class FGSP_Helpers
             'fields' => 'ids',
         ));
     }
+
+    /**
+     * Get current results for an event.
+     * 
+     * @param int $event_id
+     * @return array
+     */
+    public static function get_event_results($event_id)
+    {
+        $results = get_post_meta($event_id, 'sp_results', true);
+        return is_array($results) ? $results : array();
+    }
 }

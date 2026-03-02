@@ -530,3 +530,46 @@ select:focus {
   color: #666;
   background: #f9f9f9;
 }
+
+.fgsp-event-table input[type="number"] {
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #fff;
+  font-weight: bold;
+}
+
+.fgsp-event-table input[type="number"]:focus {
+  border-color: var(--fgsp-primary);
+  box-shadow: 0 0 0 1px var(--fgsp-primary);
+  outline: none;
+}
+
+.fgsp-promo-event,
+.fgsp-promo-side {
+  font-size: 12px;
+  padding: 4px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.fgsp-promotion-row td {
+  vertical-align: middle;
+}
+
+.fgsp-btn-icon.fgsp-promote-btn {
+  background: #f0f0f1;
+  color: #2271b1;
+}
+
+.fgsp-btn-icon.fgsp-promote-btn:hover {
+  background: #2271b1;
+  color: #fff;
+}
+
+.fgsp-close-promotion-modal,
+.fgsp-close-event-modal {
+  font-size: 28px;
+  font-weight: bold;
+  cursor: pointer;
+  line-height: 1;
+}

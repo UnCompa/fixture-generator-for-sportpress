@@ -100,6 +100,9 @@ class FGSP_Plugin
             'create_tournament_group',
             'get_eligible_teams',
             'get_group_events',
+            'save_quick_results',
+            'get_group_standings',
+            'submit_promotions',
         );
 
         foreach ($handlers as $handler) {
