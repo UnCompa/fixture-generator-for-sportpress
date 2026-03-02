@@ -401,4 +401,29 @@ class FGSP_Ajax
 
         wp_send_json_success($result);
     }
+
+    /**
+     * Create a calendar for the tournament.
+     */
+    public function create_tournament_calendar()
+    {
+        check_ajax_referer('fgsp_nonce', 'nonce');
+
+        $tournament_id = isset($_POST['tournament_id']) ? intval($_POST['tournament_id']) : 0;
+        if (!$tournament_id) {
+            wp_send_json_error('Invalid tournament ID');
+        }
+
+        $calendar_id = $this->generator->create_tournament_calendar($tournament_id);
+
+        if (!$calendar_id) {
+            wp_send_json_error('Failed to create calendar');
+        }
+
+        wp_send_json_success(array(
+            'calendar_id' => $calendar_id,
+            'edit_link' => get_edit_post_link($calendar_id, 'raw'),
+            'message' => __('Calendario generado con éxito.', 'fixture-generator-for-sportpress')
+        ));
+    }
 }

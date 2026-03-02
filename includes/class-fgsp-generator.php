@@ -411,6 +411,59 @@ class FGSP_Generator
         return array('count' => $created_count, 'message' => sprintf('Se han generado %d eventos para las eliminatorias del torneo y se ha configurado el Bracket.', $created_count));
     }
 
+    /**
+     * Create or retrieve a SportsPress calendar for the tournament.
+     */
+    public function create_tournament_calendar($tournament_id)
+    {
+        $tournament_title = get_the_title($tournament_id);
+        $calendar_title = 'Calendario - ' . $tournament_title;
+
+        // Check if exists
+        $existing = get_page_by_title($calendar_title, OBJECT, 'sp_calendar');
+        if ($existing) {
+            return $existing->ID;
+        }
+
+        // Create new
+        $calendar_id = wp_insert_post(array(
+            'post_title' => $calendar_title,
+            'post_type' => 'sp_calendar',
+            'post_status' => 'publish',
+        ));
+
+        if (!$calendar_id || is_wp_error($calendar_id)) {
+            return false;
+        }
+
+        // Config basic meta
+        update_post_meta($calendar_id, 'sp_format', 'calendar');
+        update_post_meta($calendar_id, 'sp_status', 'any');
+        update_post_meta($calendar_id, 'sp_event_format', 'all');
+        update_post_meta($calendar_id, 'sp_orderby', 'date');
+        update_post_meta($calendar_id, 'sp_order', 'ASC');
+
+        // Default columns
+        $columns = array('event', 'time', 'league', 'season', 'venue', 'day');
+        update_post_meta($calendar_id, 'sp_columns', $columns);
+
+        // Link with tournament taxonomies
+        $leagues = get_the_terms($tournament_id, 'sp_league');
+        $seasons = get_the_terms($tournament_id, 'sp_season');
+
+        if ($leagues && !is_wp_error($leagues)) {
+            wp_set_object_terms($calendar_id, intval($leagues[0]->term_id), 'sp_league');
+        }
+        if ($seasons && !is_wp_error($seasons)) {
+            wp_set_object_terms($calendar_id, intval($seasons[0]->term_id), 'sp_season');
+        }
+
+        // Specifically link the tournament ID in meta if wanted (SportsPress often uses it)
+        update_post_meta($calendar_id, 'sp_tournament', $tournament_id);
+
+        return $calendar_id;
+    }
+
     protected function log_generation($table_id, $tournament_id, $algorithm, $count, $ids)
     {
         global $wpdb;

@@ -911,4 +911,43 @@ jQuery(document).ready(function($) {
         });
     });
 
+    /**
+     * Calendar Creation Logic
+     */
+    $('#fgsp-create-calendar').on('click', function() {
+        const tournamentId = $selector.val();
+        
+        if (!tournamentId) {
+            alert('Please select a tournament first.');
+            return;
+        }
+
+        $loader.fadeIn();
+
+        $.ajax({
+            url: fgspData.ajaxUrl,
+            type: 'POST',
+            data: {
+                action: 'fgsp_create_tournament_calendar',
+                tournament_id: tournamentId,
+                nonce: fgspData.nonce
+            },
+            success: function(response) {
+                if (response.success) {
+                    if (confirm(response.data.message + ' ¿Deseas ir a configurarlo?')) {
+                        window.open(response.data.edit_link, '_blank');
+                    }
+                } else {
+                    alert('Error: ' + response.data);
+                }
+            },
+            error: function() {
+                alert('Connection error');
+            },
+            complete: function() {
+                $loader.fadeOut();
+            }
+        });
+    });
+
 });

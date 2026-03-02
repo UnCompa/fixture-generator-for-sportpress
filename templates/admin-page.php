@@ -91,6 +91,11 @@
                 <span class="dashicons dashicons-networking"></span>
                 <?php _e('Generate Playoff Bracket', 'fixture-generator-for-sportpress'); ?>
             </button>
+            <button id="fgsp-create-calendar" class="button button-secondary button-large"
+                style="background: #27ae60; border-color: #27ae60; color: white;">
+                <span class="dashicons dashicons-calendar"></span>
+                <?php _e('Generate Calendar', 'fixture-generator-for-sportpress'); ?>
+            </button>
         </div>
 
         <div id="fgsp-loader" class="fgsp-overlay" style="display: none;">
@@ -154,21 +159,28 @@
                 <div class="fgsp-field" style="margin-bottom: 20px;">
                     <label><?php _e('Bracket Format', 'fixture-generator-for-sportpress'); ?></label>
                     <select id="fgsp-playoff-format" style="width:100%;">
-                        <option value="4"><?php _e('Semi-finals & Final (4 teams)', 'fixture-generator-for-sportpress'); ?></option>
-                        <option value="8"><?php _e('Quarter-finals to Final (8 teams)', 'fixture-generator-for-sportpress'); ?></option>
-                        <option value="16"><?php _e('Round of 16 to Final (16 teams)', 'fixture-generator-for-sportpress'); ?></option>
+                        <option value="4">
+                            <?php _e('Semi-finals & Final (4 teams)', 'fixture-generator-for-sportpress'); ?></option>
+                        <option value="8">
+                            <?php _e('Quarter-finals to Final (8 teams)', 'fixture-generator-for-sportpress'); ?>
+                        </option>
+                        <option value="16">
+                            <?php _e('Round of 16 to Final (16 teams)', 'fixture-generator-for-sportpress'); ?></option>
                     </select>
                 </div>
                 <div class="fgsp-field" style="margin-bottom: 20px;">
                     <label><?php _e('Match Format', 'fixture-generator-for-sportpress'); ?></label>
                     <select id="fgsp-playoff-legs" style="width:100%;">
-                        <option value="1"><?php _e('Single Leg (Un solo partido)', 'fixture-generator-for-sportpress'); ?></option>
-                        <option value="2"><?php _e('Two Legs (Ida y Vuelta)', 'fixture-generator-for-sportpress'); ?></option>
+                        <option value="1">
+                            <?php _e('Single Leg (Un solo partido)', 'fixture-generator-for-sportpress'); ?></option>
+                        <option value="2"><?php _e('Two Legs (Ida y Vuelta)', 'fixture-generator-for-sportpress'); ?>
+                        </option>
                     </select>
                 </div>
-                <div class="fgsp-alert fgsp-alert-warning" style="background: #fff3cd; padding: 10px; border-radius: 6px; border: 1px solid #ffeeba;">
+                <div class="fgsp-alert fgsp-alert-warning"
+                    style="background: #fff3cd; padding: 10px; border-radius: 6px; border: 1px solid #ffeeba;">
                     <p style="margin:0; font-size: 13px; color: #856404;">
-                        <span class="dashicons dashicons-info" style="font-size: 18px; vertical-align: middle;"></span> 
+                        <span class="dashicons dashicons-info" style="font-size: 18px; vertical-align: middle;"></span>
                         <?php _e('This will create the necessary events in your tournament and can be visualized in SportsPress brackets.', 'fixture-generator-for-sportpress'); ?>
                     </p>
                 </div>
@@ -177,7 +189,8 @@
                 <button type="button" id="fgsp-generate-playoffs-btn" class="button button-primary">
                     <?php _e('Create Events', 'fixture-generator-for-sportpress'); ?>
                 </button>
-                <button type="button" class="button fgsp-close-playoff-modal"><?php _e('Cancel', 'fixture-generator-for-sportpress'); ?></button>
+                <button type="button"
+                    class="button fgsp-close-playoff-modal"><?php _e('Cancel', 'fixture-generator-for-sportpress'); ?></button>
             </div>
         </div>
     </div>
