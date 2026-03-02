@@ -50,12 +50,11 @@ jQuery(document).ready(function($) {
     }
 
     function renderGroups(data, preselectedTable = 0) {
-        // En la versión actualizada, data es { groups: [], leagues: [] }
         const groups = data.groups || [];
         
         if (!groups.length) {
             $groupsContainer.html('<div class="fgsp-main-card"><p>No groups found for this tournament. Use the button below to create the first one!</p></div>').show();
-            $actions.fadeIn(400); // Mostramos el contenedor de acciones para que se vea el botón de crear
+            $actions.fadeIn(400);
             return;
         }
 
@@ -66,10 +65,17 @@ jQuery(document).ready(function($) {
             const isHighlighted = (preselectedTable && parseInt(preselectedTable) === parseInt(group.id));
             
             html += `
-                <div class="fgsp-group-card ${isIncomplete ? 'incomplete' : ''} ${isHighlighted ? 'highlighted' : ''}" id="group-${group.id}">
+                <div class="fgsp-group-card ${isIncomplete ? 'incomplete' : ''} ${isHighlighted ? 'highlighted' : ''} ${group.is_played ? 'is-locked' : ''}" id="group-${group.id}">
                     <div class="fgsp-group-header">
-                        <h3>${group.title}</h3>
-                        <span class="fgsp-team-count">${teamCount} Teams</span>
+                        <h3><a href="post.php?post=${group.id}&action=edit" title="Edit League Table">${group.title}</a></h3>
+                        <div class="fgsp-group-actions">
+                            ${group.has_fixtures ? `
+                                <button type="button" class="fgsp-btn-icon fgsp-view-events" data-table-id="${group.id}" title="View Generated Events">
+                                    <span class="dashicons dashicons-soccer"></span>
+                                </button>
+                            ` : ''}
+                            <span class="fgsp-team-count">${teamCount} Teams</span>
+                        </div>
                     </div>
                     
                     ${isIncomplete ? `
@@ -156,7 +162,6 @@ jQuery(document).ready(function($) {
                             <div class="fgsp-field">
                                 <div class="fgsp-config-title">Rotate Times (comma separated)</div>
                                 <input type="text" class="fgsp-rotate-times" placeholder="18:00, 20:00" style="width: 100%; font-size: 12px;" value="18:00">
-                                <span style="font-size: 10px; color: #777;">Matches will rotate between these times.</span>
                             </div>
 
                             <div class="fgsp-field" style="margin-top: 10px;">
@@ -171,7 +176,7 @@ jQuery(document).ready(function($) {
 
                             <div class="fgsp-field" style="margin-top: 10px;">
                                 <label style="font-size: 0.8rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 5px;">
-                                    <input type="checkbox" class="fgsp-shuffle-teams"> Shuffle Teams before generation
+                                    <input type="checkbox" class="fgsp-shuffle-teams"> Shuffle Teams
                                 </label>
                             </div>
 
@@ -179,9 +184,12 @@ jQuery(document).ready(function($) {
                                 <label style="font-size: 0.8rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 5px;">
                                     <input type="checkbox" class="fgsp-assign-venue" checked> Auto-assign Venue
                                 </label>
-                                <span style="font-size: 10px; color: #777; display: block; margin-left: 20px;">Uses Home Team's venue.</span>
                             </div>
                         </div>
+
+                        <button type="button" class="button button-primary fgsp-generate-individual" ${group.is_played || isIncomplete ? 'disabled' : ''}>
+                             <span class="dashicons dashicons-randomize"></span> ${group.has_fixtures ? 'Regenerate This Group' : 'Generate This Group'}
+                        </button>
                     </div>
                 </div>
             `;
@@ -205,6 +213,118 @@ jQuery(document).ready(function($) {
         }
     });
 
+    /**
+     * Individual Group Generation
+     */
+    $(document).on('click', '.fgsp-generate-individual', function() {
+        const $card = $(this).closest('.fgsp-group-card');
+        const tableId = $card.attr('id').replace('group-', '');
+        generateFixturesForGroup(tableId, $card);
+    });
+
+    async function generateFixturesForGroup(tableId, $card, confirmOverwrite = 0) {
+        const tournamentId = $selector.val();
+        $loader.fadeIn();
+
+        try {
+            const requestData = {
+                action: 'fgsp_generate_fixtures',
+                tournament_id: tournamentId,
+                table_id: tableId,
+                algorithm: $card.find('.fgsp-algorithm-select').val(),
+                start_date: $card.find('.fgsp-start-date').val(),
+                start_time: $card.find('.fgsp-start-time').val(),
+                interval: $card.find('.fgsp-interval').val(),
+                balance_home: $card.find('.fgsp-balance-home').is(':checked') ? 1 : 0,
+                allowed_days: $card.find('.fgsp-day:checked').map(function() { return $(this).val(); }).get(),
+                rotate_times: $card.find('.fgsp-rotate-times').val(),
+                assign_venue: $card.find('.fgsp-assign-venue').is(':checked') ? 1 : 0,
+                round_prefix: $card.find('.fgsp-round-prefix').val(),
+                exclude_dates: $card.find('.fgsp-exclude-dates').val(),
+                shuffle_teams: $card.find('.fgsp-shuffle-teams').is(':checked') ? 1 : 0,
+                confirm_overwrite: confirmOverwrite,
+                nonce: fgspData.nonce
+            };
+
+            const response = await $.ajax({
+                url: fgspData.ajaxUrl,
+                type: 'POST',
+                data: requestData
+            });
+
+            if (response.success && response.data.status === 'confirmation_required') {
+                $loader.fadeOut();
+                if (confirm(response.data.message)) {
+                    generateFixturesForGroup(tableId, $card, 1);
+                }
+                return;
+            }
+
+            if (response.success) {
+                alert(`Success! Created ${response.data.count} events.`);
+                loadGroups(tournamentId); // Refresh UI
+            } else {
+                alert('Error: ' + response.data);
+            }
+        } catch (err) {
+            console.error('Individual Generation Failed:', err);
+            alert('Request failed.');
+        } finally {
+            $loader.fadeOut();
+        }
+    }
+
+    /**
+     * View Events Modal Logic
+     */
+    const $eventModal = $('#fgsp-event-viewer-modal');
+    const $eventContainer = $('#fgsp-event-list-container');
+
+    $(document).on('click', '.fgsp-view-events', function() {
+        const tableId = $(this).data('table-id');
+        $eventContainer.html('<p class="text-center"><span class="dashicons dashicons-update spin"></span> Loading events...</p>');
+        $eventModal.fadeIn(300).css('display', 'flex');
+
+        $.ajax({
+            url: fgspData.ajaxUrl,
+            type: 'POST',
+            data: {
+                action: 'fgsp_get_group_events',
+                table_id: tableId,
+                nonce: fgspData.nonce
+            },
+            success: function(response) {
+                if (response.success) {
+                    if (response.data.length === 0) {
+                        $eventContainer.html('<p>No events found.</p>');
+                    } else {
+                        let html = '<table class="fgsp-event-table"><thead><tr><th>Event</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
+                        response.data.forEach(event => {
+                            html += `
+                                <tr>
+                                    <td><strong>${event.title}</strong></td>
+                                    <td>${event.date}</td>
+                                    <td><span class="status-${event.status}">${event.status}</span></td>
+                                    <td><a href="${event.edit_link}" class="button button-small" target="_blank">Edit</a></td>
+                                </tr>`;
+                        });
+                        html += '</tbody></table>';
+                        $eventContainer.html(html);
+                    }
+                } else {
+                    $eventContainer.html('<p>Error: ' + response.data + '</p>');
+                }
+            }
+        });
+    });
+
+    $('.fgsp-close-event-modal').on('click', function() {
+        $eventModal.fadeOut(200);
+    });
+
+    /**
+     * Bulk Generation Global Action
+     */
     $(document).on('click', '#fgsp-generate-all', async function() {
         const $btn = $(this);
         const $progressContainer = $('.fgsp-progress-container');
@@ -212,15 +332,15 @@ jQuery(document).ready(function($) {
         const $progressText = $('.fgsp-progress-text');
         const tournamentId = $selector.val();
         
-        const $groupCards = $('.fgsp-group-card:not(.incomplete)');
+        const $groupCards = $('.fgsp-group-card:not(.incomplete):not(.is-locked)');
         const totalGroups = $groupCards.length;
 
         if (totalGroups === 0) {
-            alert('No groups ready for fixture generation. Please create a group and add at least 2 teams first.');
+            alert('No unlocked groups ready for fixture generation.');
             return;
         }
 
-        if (!confirm(`Are you sure you want to generate all fixtures for ${totalGroups} groups?`)) {
+        if (!confirm(`Are you sure you want to generate/regenerate fixtures for ${totalGroups} unlocked groups?`)) {
             return;
         }
 
@@ -238,7 +358,6 @@ jQuery(document).ready(function($) {
             const interval = $card.find('.fgsp-interval').val();
             const balanceHome = $card.find('.fgsp-balance-home').is(':checked') ? 1 : 0;
 
-            console.log(`FGSP: Generating fixtures for group ${tableId}...`);
             try {
                 const requestData = {
                     action: 'fgsp_generate_fixtures',
@@ -258,45 +377,30 @@ jQuery(document).ready(function($) {
                     nonce: fgspData.nonce
                 };
 
-                let response = await $.ajax({
+                // Check for existing fixtures individually to avoid stopping the whole process
+                // For simplicity in "Generate All", we assume confirmation if they have fixtures but are NOT locked
+                requestData.confirm_overwrite = $card.find('.fgsp-alert-info').length > 0 ? 1 : 0;
+
+                const response = await $.ajax({
                     url: fgspData.ajaxUrl,
                     type: 'POST',
                     data: requestData
                 });
 
-                // Handle Confirmation required
-                if (response.success && response.data.status === 'confirmation_required') {
-                    if (confirm(`Group "${$card.find('h3').text()}": ${response.data.message}`)) {
-                        requestData.confirm_overwrite = 1;
-                        response = await $.ajax({
-                            url: fgspData.ajaxUrl,
-                            type: 'POST',
-                            data: requestData
-                        });
-                    } else {
-                        console.log(`FGSP: Generation cancelled for group ${tableId}`);
-                        continue;
-                    }
-                }
-
                 if (response.success) {
                     completed++;
-                    console.log(`FGSP: Success for group ${tableId}. Created ${response.data.count} events.`);
                     const percent = Math.round((completed / totalGroups) * 100);
                     $progressFill.css('width', percent + '%');
                     $progressText.text(`${percent}% (${completed}/${totalGroups} groups completed)`);
-                } else {
-                    console.error(`FGSP Error in group ${tableId}:`, response.data);
-                    alert(`Error en grupo "${$card.find('h3').text()}": ${response.data}`);
                 }
             } catch (err) {
                 console.error(`Request failed for group ${tableId}:`, err);
             }
-
         }
 
         $btn.prop('disabled', false).removeClass('updating');
         alert(`Finished! Generated fixtures for ${completed} groups.`);
+        loadGroups(tournamentId); // Refresh final state
         
         setTimeout(() => {
             $progressContainer.fadeOut();
@@ -341,7 +445,6 @@ jQuery(document).ready(function($) {
             const startDate = $('#fgsp-modal-date').val();
             const startTime = $('#fgsp-modal-time').val();
             const interval = $('#fgsp-modal-interval').val();
-            const balanceHome = $('#fgsp-modal-balance').is(':checked') ? 1 : 0;
 
             if (!tournamentId) {
                 alert('Tournament ID not found. Please link this table to a tournament first.');
@@ -376,7 +479,6 @@ jQuery(document).ready(function($) {
                     data: requestData
                 });
 
-                // Status Confirmation logic
                 if (response.success && response.data.status === 'confirmation_required') {
                     if (confirm(response.data.message)) {
                         requestData.confirm_overwrite = 1;
@@ -394,15 +496,14 @@ jQuery(document).ready(function($) {
 
                 if (response.success) {
                     alert(`Success! Generated ${response.data.count} events.`);
-                    location.reload(); // Reload to see results in SportsPress calendars
+                    location.reload(); 
                 } else {
                     alert('Error: ' + response.data);
                 }
             } catch (err) {
                 console.error('Modal Request Failed:', err);
-                alert('Request failed. Check console for details.');
+                alert('Request failed.');
             } finally {
-
                 $modalSubmit.prop('disabled', false).text('Generate Now');
             }
         });
@@ -423,15 +524,8 @@ jQuery(document).ready(function($) {
                 selectedTeams.push($(this).val());
             });
 
-            if (!name) {
-                alert('Please enter a group name.');
-                return;
-            }
-
-            if (selectedTeams.length === 0) {
-                alert('Please select at least one team.');
-                return;
-            }
+            if (!name) { alert('Please enter a group name.'); return; }
+            if (selectedTeams.length === 0) { alert('Please select at least one team.'); return; }
 
             $btn.prop('disabled', true).html('<span class="dashicons dashicons-update spin"></span> Creating...');
 
@@ -455,8 +549,7 @@ jQuery(document).ready(function($) {
                     alert('Error: ' + response.data);
                 }
             } catch (err) {
-                console.error('Group Creation Failed:', err);
-                alert('Request failed. Check console.');
+                alert('Request failed.');
             } finally {
                 $btn.prop('disabled', false).html('<span class="dashicons dashicons-plus-alt" style="vertical-align:middle; line-height:1.5;"></span> Create Group & Assign');
             }
@@ -478,7 +571,6 @@ jQuery(document).ready(function($) {
         $actions.hide();
         $creationContainer.fadeIn();
 
-        // Load filtered teams
         $teamSelector.html('<p><span class="dashicons dashicons-update spin"></span> Loading eligible teams...</p>');
         
         $.ajax({
@@ -548,7 +640,7 @@ jQuery(document).ready(function($) {
             if (response.success) {
                 alert('Group created successfully!');
                 $creationContainer.hide();
-                $selector.trigger('change'); // Reload groups
+                $selector.trigger('change'); 
                 $('#fgsp-main-new-group-name').val('');
             } else {
                 alert('Error: ' + response.data);

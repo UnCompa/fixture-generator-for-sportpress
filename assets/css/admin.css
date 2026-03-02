@@ -94,6 +94,16 @@
   padding: 25px;
   border-top: 4px solid var(--fgsp-primary);
   animation: fadeInUp 0.5s ease forwards;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.fgsp-group-card.is-locked {
+  opacity: 0.6;
+}
+
+.fgsp-group-card.is-locked:hover {
+  opacity: 0.8;
 }
 
 .fgsp-group-card.incomplete {
@@ -116,6 +126,16 @@
 .fgsp-group-header h3 {
   margin: 0;
   font-size: 1.25rem;
+  flex: 1;
+}
+
+.fgsp-group-header h3 a {
+  text-decoration: none;
+  color: var(--fgsp-dark);
+}
+
+.fgsp-group-header h3 a:hover {
+  color: var(--fgsp-secondary);
 }
 
 .fgsp-team-count {
@@ -124,13 +144,50 @@
   border-radius: 20px;
   font-size: 0.8rem;
   font-weight: 700;
+  white-space: nowrap;
+}
+
+.fgsp-group-actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 15px;
+}
+
+.fgsp-btn-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid #ddd;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #666;
+}
+
+.fgsp-btn-icon:hover {
+  background: var(--fgsp-light);
+  transform: scale(1.1);
+  border-color: var(--fgsp-secondary);
+  color: var(--fgsp-secondary);
+}
+
+.fgsp-btn-icon.fgsp-view-events {
+  color: #e67e22;
+  border-color: #e67e22;
+}
+
+.fgsp-btn-icon.fgsp-view-events:hover {
+  background: #fff5eb;
 }
 
 .fgsp-team-list {
   margin: 0;
   padding: 0;
   list-style: none;
-  max-height: 200px;
+  max-height: 150px;
   overflow-y: auto;
   border: 1px solid #eee;
   border-radius: 8px;
@@ -138,11 +195,12 @@
 }
 
 .fgsp-team-item {
-  padding: 10px 15px;
+  padding: 8px 12px;
   border-bottom: 1px solid #eee;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  font-size: 12px;
 }
 
 .fgsp-team-item:last-child {
@@ -157,12 +215,12 @@
 }
 
 .fgsp-config-title {
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   font-weight: 700;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   color: #666;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
 }
 
 .fgsp-btn-premium {
@@ -184,6 +242,11 @@
   box-shadow: 0 6px 20px rgba(46, 204, 113, 0.6) !important;
 }
 
+.fgsp-generate-individual {
+  margin-top: 15px;
+  width: 100%;
+}
+
 .fgsp-footer-actions {
   display: flex;
   flex-direction: column;
@@ -198,6 +261,8 @@
   border-radius: var(--fgsp-radius);
   box-shadow: var(--fgsp-shadow);
   margin-bottom: 25px;
+  width: 100%;
+  max-width: 600px;
 }
 
 .fgsp-progress-bar {
@@ -228,6 +293,8 @@
 /* Inputs */
 input[type="date"],
 input[type="number"],
+input[type="time"],
+input[type="text"],
 select.fgsp-algorithm-select {
   padding: 8px 12px;
   border: 1px solid #ddd;
@@ -442,4 +509,24 @@ select:focus {
 .fgsp-modal-day:checked + span {
   color: var(--fgsp-primary);
   font-weight: bold;
+}
+
+/* Event List table */
+.fgsp-event-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.fgsp-event-table th,
+.fgsp-event-table td {
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+  text-align: left;
+  font-size: 13px;
+}
+
+.fgsp-event-table th {
+  font-weight: 700;
+  color: #666;
+  background: #f9f9f9;
 }

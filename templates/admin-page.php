@@ -92,3 +92,24 @@
             <div class="fgsp-spinner"></div>
         </div>
     </div>
+
+    <!-- Event Viewer Modal -->
+    <div id="fgsp-event-viewer-modal" class="fgsp-modal" style="display:none;">
+        <div class="fgsp-modal-content" style="max-width: 750px;">
+            <div class="fgsp-modal-header" style="background: var(--fgsp-secondary);">
+                <h3 style="color:white; margin:0;"><span class="dashicons dashicons-soccer"></span>
+                    <?php _e('Generated Events', 'fixture-generator-for-sportpress'); ?></h3>
+                <span class="fgsp-close-event-modal fgsp-close-modal">&times;</span>
+            </div>
+            <div class="fgsp-modal-body" style="max-height: 500px; overflow-y: auto;">
+                <div id="fgsp-event-list-container">
+                    <p class="text-center"><?php _e('Loading events...', 'fixture-generator-for-sportpress'); ?></p>
+                </div>
+            </div>
+            <div class="fgsp-modal-footer">
+                <button type="button"
+                    class="button fgsp-close-event-modal"><?php _e('Close', 'fixture-generator-for-sportpress'); ?></button>
+            </div>
+        </div>
+    </div>
+</div>
