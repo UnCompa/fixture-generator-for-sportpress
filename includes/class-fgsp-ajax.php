@@ -426,4 +426,92 @@ class FGSP_Ajax
             'message' => __('Calendario generado con éxito.', 'fixture-generator-for-sportpress')
         ));
     }
+
+    /**
+     * Create a full league setup (Tournament, League Table, Taxonomies) from a single name.
+     */
+    public function create_league_full()
+    {
+        check_ajax_referer('fgsp_nonce', 'nonce');
+
+        $raw_data = isset($_POST['data']) ? $_POST['data'] : '';
+        parse_str($raw_data, $form_data);
+
+        $league_name = isset($form_data['league_name']) ? sanitize_text_field($form_data['league_name']) : '';
+        $team_ids = isset($form_data['team_ids']) ? array_map('intval', (array) $form_data['team_ids']) : array();
+
+        if (empty($league_name)) {
+            wp_send_json_error(__('Por favor ingresa un nombre para la liga.', 'fixture-generator-for-sportpress'));
+        }
+
+        error_log("FGSP: Creando liga completa: " . $league_name);
+
+        // 1. Create main Competition post (sp_tournament)
+        $tournament_id = wp_insert_post(array(
+            'post_title' => $league_name,
+            'post_type' => 'sp_tournament',
+            'post_status' => 'publish'
+        ));
+
+        if (is_wp_error($tournament_id)) {
+            wp_send_json_error(__('Error al crear el torneo: ', 'fixture-generator-for-sportpress') . $tournament_id->get_error_message());
+        }
+
+        // 2. Auto-manage Taxonomies (League and Season)
+        // Competition Taxonomy
+        $league_term = get_term_by('name', $league_name, 'sp_league');
+        if (!$league_term) {
+            $league_term = wp_insert_term($league_name, 'sp_league');
+        }
+        $league_term_id = (!is_wp_error($league_term)) ? (is_array($league_term) ? $league_term['term_id'] : $league_term->term_id) : 0;
+
+        // Season Taxonomy
+        $current_year = date('Y');
+        $season_name = sprintf(__('Temporada %s', 'fixture-generator-for-sportpress'), $current_year);
+        $season_term = get_term_by('name', $season_name, 'sp_season');
+        if (!$season_term) {
+            $season_term = wp_insert_term($season_name, 'sp_season');
+        }
+        $season_term_id = (!is_wp_error($season_term)) ? (is_array($season_term) ? $season_term['term_id'] : $season_term->term_id) : 0;
+
+        // Assign terms to tournament
+        if ($league_term_id)
+            wp_set_object_terms($tournament_id, intval($league_term_id), 'sp_league');
+        if ($season_term_id)
+            wp_set_object_terms($tournament_id, intval($season_term_id), 'sp_season');
+
+        // 3. Create Standing Table (sp_table) and assign teams
+        $table_id = $this->generator->create_group($tournament_id, $league_name, $team_ids);
+
+        if (is_wp_error($table_id)) {
+            wp_send_json_error($table_id->get_error_message());
+        }
+
+        // 4. Link teams AND their players to the new competition taxonomies
+        foreach ($team_ids as $tid) {
+            if ($league_term_id)
+                wp_set_object_terms($tid, intval($league_term_id), 'sp_league', true);
+            if ($season_term_id)
+                wp_set_object_terms($tid, intval($season_term_id), 'sp_season', true);
+
+            // Get players for this team and link them too
+            $player_ids = FGSP_Helpers::get_team_players_ids($tid);
+            if (!empty($player_ids)) {
+                foreach ($player_ids as $pid) {
+                    if ($league_term_id)
+                        wp_set_object_terms($pid, intval($league_term_id), 'sp_league', true);
+                    if ($season_term_id)
+                        wp_set_object_terms($pid, intval($season_term_id), 'sp_season', true);
+                }
+            }
+        }
+
+        // 5. Update redirect link to be cleaner
+        $redirect_url = admin_url('post.php?post=' . $table_id . '&action=edit');
+
+        wp_send_json_success(array(
+            'message' => __('¡Liga y Torneo creados exitosamente! Redirigiendo a la tabla...', 'fixture-generator-for-sportpress'),
+            'redirect_url' => $redirect_url
+        ));
+    }
 }

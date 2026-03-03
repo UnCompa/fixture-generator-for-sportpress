@@ -106,6 +106,7 @@ class FGSP_Plugin
             'submit_promotions',
             'generate_playoffs',
             'create_tournament_calendar',
+            'create_league_full',
         );
 
         foreach ($handlers as $handler) {
