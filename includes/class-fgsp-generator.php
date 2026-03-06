@@ -437,7 +437,7 @@ class FGSP_Generator
         }
 
         // Config basic meta
-        update_post_meta($calendar_id, 'sp_format', 'calendar');
+        update_post_meta($calendar_id, 'sp_format', 'blocks');
         update_post_meta($calendar_id, 'sp_status', 'any');
         update_post_meta($calendar_id, 'sp_event_format', 'all');
         update_post_meta($calendar_id, 'sp_orderby', 'date');
