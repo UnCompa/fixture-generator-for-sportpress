@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Fixture Generator for SportsPress
  * Description: Automatically generates fixtures for SportsPress tournaments and league tables.
- * Version: 1.2.0
+ * Version: 1.2.2
  * Author: UnCompa
  * Text Domain: fixture-generator-for-sportpress
  */

@@ -91,11 +91,18 @@
                 <span class="dashicons dashicons-networking"></span>
                 <?php _e('Generate Playoff Bracket', 'fixture-generator-for-sportpress'); ?>
             </button>
-            <button id="fgsp-create-calendar" class="button button-secondary button-large"
-                style="background: #27ae60; border-color: #27ae60; color: white;">
-                <span class="dashicons dashicons-calendar"></span>
-                <?php _e('Generate Calendar', 'fixture-generator-for-sportpress'); ?>
-            </button>
+            <div style="display: flex; gap: 5px; align-items: center;">
+                <select id="fgsp-calendar-format" class="button-large" style="height: 40px; border-radius: 4px; border: 1px solid #ddd;">
+                    <option value="blocks" selected><?php _e('Format: Blocks', 'fixture-generator-for-sportpress'); ?></option>
+                    <option value="list"><?php _e('Format: List', 'fixture-generator-for-sportpress'); ?></option>
+                    <option value="calendar"><?php _e('Format: Calendar', 'fixture-generator-for-sportpress'); ?></option>
+                </select>
+                <button id="fgsp-create-calendar" class="button button-secondary button-large"
+                    style="background: #27ae60; border-color: #27ae60; color: white;">
+                    <span class="dashicons dashicons-calendar"></span>
+                    <?php _e('Generate Calendar', 'fixture-generator-for-sportpress'); ?>
+                </button>
+            </div>
         </div>
 
         <div id="fgsp-loader" class="fgsp-overlay" style="display: none;">

@@ -410,11 +410,13 @@ class FGSP_Ajax
         check_ajax_referer('fgsp_nonce', 'nonce');
 
         $tournament_id = isset($_POST['tournament_id']) ? intval($_POST['tournament_id']) : 0;
+        $format = isset($_POST['format']) ? sanitize_text_field($_POST['format']) : 'blocks';
+
         if (!$tournament_id) {
             wp_send_json_error('Invalid tournament ID');
         }
 
-        $calendar_id = $this->generator->create_tournament_calendar($tournament_id);
+        $calendar_id = $this->generator->create_tournament_calendar($tournament_id, $format);
 
         if (!$calendar_id) {
             wp_send_json_error('Failed to create calendar');

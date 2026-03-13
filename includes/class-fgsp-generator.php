@@ -414,7 +414,7 @@ class FGSP_Generator
     /**
      * Create or retrieve a SportsPress calendar for the tournament.
      */
-    public function create_tournament_calendar($tournament_id)
+    public function create_tournament_calendar($tournament_id, $format = 'blocks')
     {
         $tournament_title = get_the_title($tournament_id);
         $calendar_title = 'Calendario - ' . $tournament_title;
@@ -437,7 +437,7 @@ class FGSP_Generator
         }
 
         // Config basic meta
-        update_post_meta($calendar_id, 'sp_format', 'blocks');
+        update_post_meta($calendar_id, 'sp_format', $format);
         update_post_meta($calendar_id, 'sp_status', 'any');
         update_post_meta($calendar_id, 'sp_event_format', 'all');
         update_post_meta($calendar_id, 'sp_orderby', 'date');

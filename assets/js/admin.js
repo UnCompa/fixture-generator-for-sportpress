@@ -916,6 +916,7 @@ jQuery(document).ready(function($) {
      */
     $('#fgsp-create-calendar').on('click', function() {
         const tournamentId = $selector.val();
+        const format = $('#fgsp-calendar-format').val() || 'blocks';
         
         if (!tournamentId) {
             alert('Please select a tournament first.');
@@ -930,6 +931,7 @@ jQuery(document).ready(function($) {
             data: {
                 action: 'fgsp_create_tournament_calendar',
                 tournament_id: tournamentId,
+                format: format,
                 nonce: fgspData.nonce
             },
             success: function(response) {
