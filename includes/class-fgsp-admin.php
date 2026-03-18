@@ -18,7 +18,7 @@ class FGSP_Admin
             'edit.php?post_type=sp_event',
             __('Fixture Generator', 'fixture-generator-for-sportpress'),
             __('Fixture Generator', 'fixture-generator-for-sportpress'),
-            'manage_options',
+            'edit_sp_events',
             'fgsp-generator',
             array($this, 'render_admin_page')
         );
@@ -27,7 +27,7 @@ class FGSP_Admin
             'edit.php?post_type=sp_event',
             __('Crear Liga', 'fixture-generator-for-sportpress'),
             __('Crear Liga', 'fixture-generator-for-sportpress'),
-            'manage_options',
+            'edit_sp_events',
             'fgsp-create-league',
             array($this, 'render_create_league_page')
         );

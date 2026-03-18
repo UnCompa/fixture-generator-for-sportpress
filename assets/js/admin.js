@@ -74,7 +74,7 @@ jQuery(document).ready(function($) {
                         <div class="fgsp-group-actions">
                             ${group.has_fixtures ? `
                                 <button type="button" class="fgsp-btn-icon fgsp-view-events" data-table-id="${group.id}" title="View & Edit Results">
-                                    <span class="dashicons dashicons-soccer"></span>
+                                    <span class="dashicons dashicons-format-gallery"></span>
                                 </button>
                                 <button type="button" class="fgsp-btn-icon fgsp-promote-btn" data-table-id="${group.id}" title="Promote to Playoffs">
                                     <span class="dashicons dashicons-external"></span>
@@ -228,6 +228,19 @@ jQuery(document).ready(function($) {
         generateFixturesForGroup(tableId, $card);
     });
 
+    // New: open prefilled Quick Modal for group generation
+    $(document).on('click', '.fgsp-generate-fixtures', function() {
+        var groupId = $(this).data('group-id');
+        var tournamentId = $(this).data('tournament-id');
+        if (typeof tournamentId !== 'undefined') {
+            $('#fgsp-modal-tournament-id').val(tournamentId);
+        }
+        if (typeof groupId !== 'undefined') {
+            $('#fgsp-modal-table-id').val(groupId);
+        }
+        $('#fgsp-quick-modal').fadeIn(300).css('display','flex');
+    });
+
     async function generateFixturesForGroup(tableId, $card, confirmOverwrite = 0) {
         const tournamentId = $selector.val();
         $loader.fadeIn();
@@ -280,9 +293,8 @@ jQuery(document).ready(function($) {
         }
     }
 
-    /**
-     * View Events & Edit Results Modal Logic
-     */
+
+    
     const $eventModal = $('#fgsp-event-viewer-modal');
     const $eventContainer = $('#fgsp-event-list-container');
     const $saveResultsBtn = $('#fgsp-save-results-btn');

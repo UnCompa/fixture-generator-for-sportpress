@@ -36,7 +36,7 @@
         <input type="hidden" id="fgsp-tournament-id" value="<?php echo $post_id; ?>">
         <button type="button" id="fgsp-create-group-btn" class="button button-primary"
             style="margin-top:15px; width:100%;">
-            <span class="dashicons dashicons-plus-alt" style="vertical-align:middle; line-height:1.5;"></span>
+            <span class="dashicons dashicons-plus-alt" style="vertical-align:middle; line-height:1;"></span>
             <?php _e('Create Group & Assign', 'fixture-generator-for-sportpress'); ?>
         </button>
     </div>
@@ -54,9 +54,13 @@
             <?php foreach ($tables as $table):
                 $table_teams = get_post_meta($table->ID, 'sp_teams', true);
                 $team_count = is_array($table_teams) ? count(array_filter(array_keys($table_teams))) : 0;
+                // Retrieve tournament id for data attributes (to prefill modal later)
+                $tournament_of_table = get_post_meta($table->ID, 'sp_tournament', true);
                 ?>
                 <div class="fgsp-group-item"
-                    style="display:flex; justify-content:space-between; align-items:center; padding:8px; border-bottom:1px solid #eee;">
+                    style="display:flex; justify-content:space-between; align-items:center; padding:8px; border-bottom:1px solid #eee;"
+                    data-group-id="<?php echo $table->ID; ?>"
+                    data-tournament-id="<?php echo esc_attr($tournament_of_table); ?>">
                     <span><strong>
                             <?php echo esc_html($table->post_title); ?>
                         </strong> (
@@ -66,8 +70,21 @@
                     <a href="<?php echo get_edit_post_link($table->ID); ?>" class="button button-small" target="_blank">
                         <?php _e('Edit', 'fixture-generator-for-sportpress'); ?>
                     </a>
+                    <button type="button" class="button button-small fgsp-generate-fixtures"
+                        data-group-id="<?php echo $table->ID; ?>"
+                        data-tournament-id="<?php echo esc_attr($tournament_of_table); ?>"
+                        title="Generate Fixtures for this group">
+                        <span class="dashicons dashicons-media-spreadsheet"
+                            style="vertical-align:middle; margin-right:2px;"></span>
+                        <?php _e('Generate Fixtures', 'fixture-generator-for-sportpress'); ?>
+                    </button>
                 </div>
             <?php endforeach; ?>
         </div>
     </div>
 </div>
+
+<?php
+// Re-use the Quick Fixture Generator modal markup on the Groups admin page
+include plugin_dir_path(dirname(__FILE__, 1)) . 'templates/meta-box-quick.php';
+?>
