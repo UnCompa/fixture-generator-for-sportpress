@@ -239,6 +239,7 @@ class FGSP_Generator
             'post_title' => $group_name,
             'post_type' => 'sp_table',
             'post_status' => 'publish',
+            'post_author' => get_current_user_id(),
         ));
 
         if (!$table_id || is_wp_error($table_id)) {
@@ -427,9 +428,10 @@ class FGSP_Generator
 
         // Create new
         $calendar_id = wp_insert_post(array(
-            'post_title' => $calendar_title,
-            'post_type' => 'sp_calendar',
+            'post_title'  => $calendar_title,
+            'post_type'   => 'sp_calendar',
             'post_status' => 'publish',
+            'post_author' => get_current_user_id(),
         ));
 
         if (!$calendar_id || is_wp_error($calendar_id)) {

@@ -452,7 +452,8 @@ class FGSP_Ajax
         $tournament_id = wp_insert_post(array(
             'post_title' => $league_name,
             'post_type' => 'sp_tournament',
-            'post_status' => 'publish'
+            'post_status' => 'publish',
+            'post_author' => get_current_user_id()
         ));
 
         if (is_wp_error($tournament_id)) {
@@ -466,6 +467,10 @@ class FGSP_Ajax
             $league_term = wp_insert_term($league_name, 'sp_league');
         }
         $league_term_id = (!is_wp_error($league_term)) ? (is_array($league_term) ? $league_term['term_id'] : $league_term->term_id) : 0;
+        
+        if ($league_term_id && get_current_user_id()) {
+            update_term_meta($league_term_id, 'term_author', get_current_user_id());
+        }
 
         // Season Taxonomy
         $current_year = date('Y');
@@ -475,6 +480,10 @@ class FGSP_Ajax
             $season_term = wp_insert_term($season_name, 'sp_season');
         }
         $season_term_id = (!is_wp_error($season_term)) ? (is_array($season_term) ? $season_term['term_id'] : $season_term->term_id) : 0;
+        
+        if ($season_term_id && get_current_user_id()) {
+            update_term_meta($season_term_id, 'term_author', get_current_user_id());
+        }
 
         // Assign terms to tournament
         if ($league_term_id)

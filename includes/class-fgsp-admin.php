@@ -98,6 +98,7 @@ class FGSP_Admin
             'posts_per_page' => -1,
             'orderby' => 'title',
             'order' => 'ASC',
+            'suppress_filters' => false,
         ));
 
         include plugin_dir_path(dirname(__FILE__, 1)) . 'templates/create-league.php';
@@ -112,6 +113,7 @@ class FGSP_Admin
             'post_type' => 'sp_tournament',
             'post_status' => 'publish',
             'posts_per_page' => -1,
+            'suppress_filters' => false,
         ));
 
         $preselected_table = isset($_GET['sp_table']) ? intval($_GET['sp_table']) : 0;

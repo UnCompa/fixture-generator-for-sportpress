@@ -73,6 +73,8 @@ class FGSP_Meta_Boxes
     public function render_groups_manager($post)
     {
         $post_id = $post->ID;
+        $user = wp_get_current_user();
+        $is_manager = in_array('tournament_manager', (array) $user->roles) && !in_array('administrator', (array) $user->roles);
 
         // Get tournament leagues
         $leagues = get_the_terms($post_id, 'sp_league');
@@ -88,6 +90,10 @@ class FGSP_Meta_Boxes
             'order' => 'ASC'
         );
 
+        if ($is_manager) {
+            $args['suppress_filters'] = false;
+        }
+
         if (!empty($league_ids)) {
             $args['tax_query'] = array(
                 array('taxonomy' => 'sp_league', 'field' => 'term_id', 'terms' => $league_ids),
@@ -97,13 +103,19 @@ class FGSP_Meta_Boxes
         $teams = get_posts($args);
 
         // Get associated groups (tables)
-        $tables = get_posts(array(
+        $table_args = array(
             'post_type' => 'sp_table',
             'posts_per_page' => -1,
             'meta_query' => array(
                 array('key' => 'sp_tournament', 'value' => $post_id)
             )
-        ));
+        );
+
+        if ($is_manager) {
+            $table_args['suppress_filters'] = false;
+        }
+
+        $tables = get_posts($table_args);
 
         include plugin_dir_path(dirname(__FILE__, 1)) . 'templates/meta-box-groups.php';
     }
@@ -113,9 +125,11 @@ class FGSP_Meta_Boxes
      */
     public function render_associated_events($post)
     {
+        $user = wp_get_current_user();
+        $is_manager = in_array('tournament_manager', (array) $user->roles) && !in_array('administrator', (array) $user->roles);
         $meta_key = ($post->post_type === 'sp_table') ? 'sp_table' : 'sp_tournament';
 
-        $events = get_posts(array(
+        $event_args = array(
             'post_type' => 'sp_event',
             'post_status' => 'any',
             'posts_per_page' => -1,
@@ -127,7 +141,16 @@ class FGSP_Meta_Boxes
             ),
             'orderby' => 'post_date',
             'order' => 'DESC'
-        ));
+        );
+
+        if ($is_manager) {
+            $event_args['suppress_filters'] = false;
+        }
+
+        $events = get_posts($event_args);
+        
+        // Final sanity check: if no events found but we restricted by author,
+        // it might be because the events were created by someone else (unlikely for a manager's tourney)
 
         if (empty($events)) {
             echo '<p>' . __('No events found.', 'fixture-generator-for-sportpress') . '</p>';
